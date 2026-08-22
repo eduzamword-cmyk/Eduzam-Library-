@@ -1,0 +1,10 @@
+{
+  "name": "EDUZAM — National Curriculum & E-Library Portal",
+  "description": "Zambia Ministry of Education & CDC Competence-Based Curriculum (CBC) extractor, lesson planner, and multi-page interactive digital library.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
