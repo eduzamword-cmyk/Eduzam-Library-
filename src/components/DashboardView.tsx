@@ -192,6 +192,13 @@ export function getInstitutionAbbreviation(name: string): string {
   return 'ABSS';
 }
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
 export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardViewProps) {
   const [queryText, setQueryText] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -199,7 +206,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
       id: 'welcome-1',
       sender: 'robot',
       salutation: undefined,
-      text: '',
+      text: 'I am connected to national academic portals. How can I assist you this productive day?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -842,19 +849,6 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
           )}
         </AnimatePresence>
 
-        {/* Brand Header: Golden AI Star on top */}
-        <motion.div 
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col items-center justify-center gap-1.5 pb-1 select-none text-center"
-        >
-          {/* Perfect Metallic, Original, Real Golden Small Star of the AI Icon Shape */}
-          <div className="flex items-center justify-center cursor-pointer group">
-            <MetallicGoldenStar size={32} />
-          </div>
-        </motion.div>
-
         {/* Interactive Communication Box - Extended Upwards */}
         <div className="w-full relative min-h-[380px] sm:min-h-[440px] h-[60vh] sm:h-[66vh] max-h-[74vh] sm:max-h-[78vh] flex flex-col transition-[height,max-height] duration-500 ease-out">
           <motion.div 
@@ -865,12 +859,12 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
               scale: isRobotArrived ? 1 : 0.98
             }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="w-full h-full bg-white border border-blue-500/25 shadow-xs rounded-[28px] sm:rounded-[32px] flex flex-col transition-all duration-300 relative overflow-hidden"
+            className="w-full h-full bg-white border border-slate-300 shadow-xs rounded-[28px] sm:rounded-[32px] flex flex-col transition-all duration-300 relative overflow-hidden"
           >
             {/* Top Header inside Communication Box: Salutation below top boundary & Quick Actions */}
-            <div className="px-4 sm:px-6 pt-3 pb-2 flex items-center justify-between bg-white z-10 shrink-0 border-b border-slate-100">
-              <h3 className="text-lg sm:text-xl font-bold text-slate-700 font-google-sans tracking-tight">
-                Good evening super admin, your workspace is ready.
+            <div className="px-4 sm:px-6 py-1.5 flex items-center justify-between bg-slate-950 z-10 shrink-0 border-b border-slate-800">
+              <h3 className="text-base sm:text-lg font-bold text-white font-['Times_New_Roman',_Times,_serif] tracking-tight">
+                {getGreeting()} super admin
               </h3>
               <div className="flex items-center gap-1">
                 <button
@@ -878,14 +872,14 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                     setActiveToolModal('search');
                     setIsToolsOpen(true);
                   }}
-                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                   title="Search Conversation"
                 >
                   <Search className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleClearChat}
-                  className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                   title="Clear Chat"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -913,11 +907,6 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                         )}
 
                         <div className="whitespace-pre-wrap">{msg.text}</div>
-
-                        {/* TIME AT BOTTOM OF USER QUERY */}
-                        <div className="mt-2 pt-1 border-t border-slate-300/60 flex items-center justify-end gap-1.5 text-[10px] text-slate-500 font-semibold">
-                          <span>{msg.timestamp}</span>
-                        </div>
                       </div>
                     </div>
                   ) : (
@@ -934,7 +923,6 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                       {/* Bottom details for Robot Response */}
                       <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 font-semibold">{msg.timestamp}</span>
                           {msg.category && (
                             <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 bg-slate-100 text-slate-700 rounded-xs">
                               {msg.category}
@@ -991,14 +979,16 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
             </div>
 
             {/* Integrated Search, File Upload, Mic & Send Message Controls Bar */}
-            <div className="border-t border-slate-100 bg-white/95 backdrop-blur-md p-2.5 sm:p-3.5 shrink-0 rounded-b-[28px] sm:rounded-b-[32px]">
+            <div className="border-t border-slate-200 bg-slate-50 focus-within:bg-white transition-colors shrink-0">
               {attachedFileName && (
-                <div className="mb-2 inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200/90 text-emerald-800 rounded-lg text-xs font-bold animate-fadeIn">
-                  <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="truncate max-w-[200px]">{attachedFileName}</span>
-                  <button type="button" onClick={() => setAttachedFileName(null)} className="ml-1 text-emerald-600 hover:text-emerald-900 font-bold p-0.5 rounded-full hover:bg-emerald-100">
-                    <X className="w-3 h-3" />
-                  </button>
+                <div className="px-4 pt-3 pb-1 flex">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200/90 text-emerald-800 rounded-lg text-xs font-bold animate-fadeIn">
+                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="truncate max-w-[200px]">{attachedFileName}</span>
+                    <button type="button" onClick={() => setAttachedFileName(null)} className="ml-1 text-emerald-600 hover:text-emerald-900 font-bold p-0.5 rounded-full hover:bg-emerald-100">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1007,15 +997,35 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                   e.preventDefault();
                   handleQuerySubmit();
                 }}
-                className="w-full bg-slate-50/90 hover:bg-slate-50 border border-slate-200/90 focus-within:border-blue-700 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-900/10 rounded-2xl p-1.5 sm:p-2 flex items-center gap-2 shadow-2xs transition-all"
+                className="w-full flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-3.5"
               >
-                {/* 1. Plus & Mic Grouped Together */}
-                <div className="flex items-center gap-0.5 shrink-0">
+                {/* Text Input Field on Top */}
+                <textarea
+                  value={queryText}
+                  onChange={(e) => {
+                    setQueryText(e.target.value);
+                    if (isTypingSoundEnabled && !isAudioMuted && e.target.value.length % 3 === 0) {
+                      playTypingClick(soundVolume * 0.7);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleQuerySubmit();
+                    }
+                  }}
+                  placeholder={isListening ? "Listening... Speak your command..." : "Type a message..."}
+                  className="w-full bg-transparent px-2 text-sm font-semibold text-slate-950 placeholder:text-slate-400 focus:outline-none resize-none min-h-[60px]"
+                  rows={2}
+                />
+
+                {/* 3 Icons aligned in a straight line on the right side */}
+                <div className="flex items-center justify-end gap-2 w-full">
                   <label 
-                    className="w-9 h-9 rounded-xl hover:bg-blue-50 active:bg-blue-100 text-slate-600 hover:text-blue-900 flex items-center justify-center transition-all cursor-pointer relative group"
+                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300 text-slate-600 hover:text-blue-700 flex items-center justify-center transition-all cursor-pointer relative group"
                     title="Add files or attach documents"
                   >
-                    <Plus className="w-4.5 h-4.5 text-slate-600 group-hover:scale-110 group-hover:text-blue-700 transition-transform stroke-[2.2]" />
+                    <Plus className="w-4 h-4 group-hover:scale-110 transition-transform stroke-[2]" />
                     <input
                       type="file"
                       className="hidden"
@@ -1030,44 +1040,29 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                   <button
                     type="button"
                     onClick={toggleMicListening}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer relative ${
+                    className={`w-8 h-8 rounded-lg border shadow-sm flex items-center justify-center transition-all cursor-pointer relative ${
                       isListening 
-                        ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 animate-pulse' 
-                        : 'hover:bg-blue-50 text-slate-600 hover:text-blue-900'
+                        ? 'bg-rose-500 border-rose-600 text-white animate-pulse' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 hover:text-blue-700'
                     }`}
                     title={isListening ? "Stop Voice Input" : "Voice Input (Mic)"}
                   >
                     {isListening ? (
-                      <MicOff className="w-4.5 h-4.5 animate-bounce stroke-[2.2]" />
+                      <MicOff className="w-4 h-4 animate-bounce stroke-[2]" />
                     ) : (
-                      <Mic className="w-4.5 h-4.5 text-slate-600 hover:scale-110 transition-transform stroke-[2.2]" />
+                      <Mic className="w-4 h-4 hover:scale-110 transition-transform stroke-[2]" />
                     )}
                   </button>
+
+                  <button
+                    type="submit"
+                    disabled={isAiLoading || (!queryText.trim() && !attachedFileName)}
+                    className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 border border-blue-700 active:scale-95 text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed shrink-0 cursor-pointer group"
+                    title="Send Message"
+                  >
+                    <ArrowUp className="w-4 h-4 stroke-[2.5] group-hover:-translate-y-0.5 transition-transform" />
+                  </button>
                 </div>
-
-                {/* 2. Text Input Field */}
-                <input
-                  type="text"
-                  value={queryText}
-                  onChange={(e) => {
-                    setQueryText(e.target.value);
-                    if (isTypingSoundEnabled && !isAudioMuted && e.target.value.length % 3 === 0) {
-                      playTypingClick(soundVolume * 0.7);
-                    }
-                  }}
-                  placeholder={isListening ? "Listening... Speak your command..." : "Type a message..."}
-                  className="flex-1 bg-transparent px-2 text-sm font-semibold text-slate-950 placeholder:text-slate-400 focus:outline-none"
-                />
-
-                {/* 3. Small Upward Arrow Send Button */}
-                <button
-                  type="submit"
-                  disabled={isAiLoading || (!queryText.trim() && !attachedFileName)}
-                  className="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center justify-center transition-all shadow-md disabled:opacity-30 disabled:cursor-not-allowed shrink-0 cursor-pointer group"
-                  title="Send Message"
-                >
-                  <ArrowUp className="w-4 h-4 stroke-[2.5] group-hover:-translate-y-0.5 transition-transform" />
-                </button>
               </form>
             </div>
           </motion.div>

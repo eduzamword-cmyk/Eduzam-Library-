@@ -62,7 +62,6 @@ import {
 } from '../data/libraryData';
 import { getDocumentPages } from '../data/libraryPagesContent';
 import EduzamResourceExtractor from './EduzamResourceExtractor';
-import booksBg from '../assets/images/clean_bookshelf_library_1787336658591.jpg';
 
 interface DigitalLibraryProps {
   onNavigate?: (viewId: string) => void;
@@ -446,15 +445,6 @@ export default function DigitalLibrary({ onNavigate }: DigitalLibraryProps) {
         )}
       </AnimatePresence>
 
-      {/* Clean Rectangular Window for EDUZAM Digital Library - Only Image without tags/info */}
-      <div className="w-full relative rounded-lg border border-slate-700 shadow-xs overflow-hidden h-[160px] sm:h-[220px]">
-        {/* Bookshelves Background - 40% transparent (opacity-60) */}
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat scale-100 opacity-60"
-          style={{ backgroundImage: `url(${booksBg})` }}
-        />
-      </div>
-
       {/* Main Search Command Bar */}
       <div className="w-full bg-white p-4 sm:p-5 rounded-lg border border-slate-200 shadow-xs flex flex-col gap-4">
         
@@ -466,7 +456,7 @@ export default function DigitalLibrary({ onNavigate }: DigitalLibraryProps) {
               setActiveCategory('ai_extractor');
             }}
             className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-900/20 text-white transition-all transform active:scale-95 cursor-pointer ring-2 ring-emerald-500/50 hover:ring-emerald-400 group"
-            title="AI Data Extractor (Gemini)"
+            title="AI Data Extractor"
           >
             <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform" />
           </button>

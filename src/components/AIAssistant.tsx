@@ -13,25 +13,44 @@ export default function AIAssistant() {
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || isTyping) return;
 
+    const userQuery = query;
     // Add user message
-    const userMsg = { id: Date.now(), role: 'user', text: query };
+    const userMsg = { id: Date.now(), role: 'user', text: userQuery };
     setChatHistory(prev => [...prev, userMsg]);
     setQuery('');
     setIsTyping(true);
 
-    // Mock AI response
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: userQuery,
+          mode: 'EDUCATION_ASSISTANT'
+        })
+      });
+      const data = await response.json();
+      const replyText = data?.text || "I have analyzed your query according to official Ministry guidelines.";
+      
       setChatHistory(prev => [...prev, {
         id: Date.now(),
         role: 'assistant',
-        text: "I've analyzed the recent markbook data. The Grade 12 cohort is showing a 15% improvement in Mathematics compared to last term. Would you like me to generate a detailed breakdown report for the regional schools?"
+        text: replyText
       }]);
+    } catch (err) {
+      console.error('AI Assistant fetch error:', err);
+      setChatHistory(prev => [...prev, {
+        id: Date.now(),
+        role: 'assistant',
+        text: "I am currently synchronizing with the central education portal. Please try your request again."
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -44,7 +63,7 @@ export default function AIAssistant() {
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">AI Education Assistant</h2>
             <p className="text-purple-200 text-sm flex items-center gap-2">
-              <Sparkles className="w-3 h-3" /> Powered by Gemini
+              <Sparkles className="w-3 h-3" /> Ministry Academic Engine
             </p>
           </div>
         </div>

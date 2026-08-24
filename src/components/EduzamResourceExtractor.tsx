@@ -323,7 +323,7 @@ export default function EduzamResourceExtractor({
     }, 1200);
 
     const t2 = setTimeout(() => {
-      setExtractionStage('Engaging Gemini 3.7 Intelligence Engine for CDC CBC alignment...');
+      setExtractionStage('Engaging EDUZAM 3.7 Intelligence Engine for CDC CBC alignment...');
     }, 2400);
 
     const t3 = setTimeout(() => {
@@ -366,7 +366,7 @@ export default function EduzamResourceExtractor({
         extractionType: extractionMode,
         sourceAuthority,
         publisher: data.resource?.publisher || 'Curriculum Development Centre (CDC) & Zambia MoE',
-        author: data.resource?.author || 'National Curriculum Panel & Gemini 3.7 Intelligence',
+        author: data.resource?.author || 'National Curriculum Panel & EDUZAM 3.7 Intelligence',
         year: '2026',
         fileSize: data.resource?.fileSize || '5.2 MB',
         pages: data.resource?.pages || '14 pages',
@@ -421,7 +421,7 @@ export default function EduzamResourceExtractor({
         pageTitle: 'Comprehensive CDC Teaching Resource',
         chapterTitle: extractedResult.title,
         content: extractedResult.markdown,
-        keyTakeaways: ['Extracted via EDUZAM Gemini 3.7 Teaching Resource Intelligence.']
+        keyTakeaways: ['Extracted via EDUZAM 3.7 Teaching Resource Intelligence.']
       }
     ];
 
@@ -514,7 +514,7 @@ export default function EduzamResourceExtractor({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                Gemini 3.7 Curriculum Extractor
+                EDUZAM 3.7 Curriculum Extractor
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold">
                 <ShieldCheck className="w-3 h-3 text-blue-300" />
@@ -539,7 +539,7 @@ export default function EduzamResourceExtractor({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Model Core</div>
-              <div className="text-base font-black text-emerald-400 mt-0.5">Gemini 3.7 Flash</div>
+              <div className="text-base font-black text-emerald-400 mt-0.5">EDUZAM 3.7 Engine</div>
               <div className="text-[10px] text-slate-400">MoE Syllabi Grounded</div>
             </div>
 
@@ -820,7 +820,7 @@ export default function EduzamResourceExtractor({
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-emerald-300" />
-                  <span>Extract Teaching Resource (3.7 Gemini)</span>
+                  <span>Extract Teaching Resource (EDUZAM 3.7)</span>
                 </>
               )}
             </button>
@@ -888,7 +888,7 @@ export default function EduzamResourceExtractor({
                   AI Teaching Resource Extractor Active
                 </h3>
                 <p className="text-xs font-semibold text-emerald-700">
-                  {extractionStage || 'Processing syllabus metadata with Gemini 3.7...'}
+                  {extractionStage || 'Processing syllabus metadata with EDUZAM 3.7...'}
                 </p>
                 <p className="text-[11px] text-slate-400 leading-relaxed pt-2">
                   Extracting CDC competencies, behavioral learning outcomes, 4-stage progression, worked examples, and ECZ mark schemes.

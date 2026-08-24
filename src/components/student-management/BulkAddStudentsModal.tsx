@@ -252,6 +252,13 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
   const handleImageOCRUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Selected photo exceeds 3MB limit. Please upload a smaller photo.');
+      e.target.value = '';
+      return;
+    }
+
     setIsSubmitting(true);
     // Simulate OCR processing on uploaded image with authentic Zambian names & student numbers
     setTimeout(() => {
@@ -265,6 +272,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
       setCapturedNames(extracted);
       setIsSubmitting(false);
     }, 1000);
+    e.target.value = '';
   };
 
   const stopCamera = () => {
@@ -714,7 +722,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                       className="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
                     >
                       <Sparkles className={`w-4 h-4 ${aiGenerating ? 'animate-spin' : ''}`} />
-                      {aiGenerating ? 'Gemini AI generating roster...' : 'Generate Names with Gemini AI'}
+                      {aiGenerating ? 'AI generating roster...' : 'Generate Names with AI'}
                     </button>
                   </form>
 
@@ -735,7 +743,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                         {aiNamesList.map((name, idx) => (
                           <div key={idx} className="text-xs font-bold text-slate-800 bg-white px-3 py-2 rounded-xl border border-slate-100 flex items-center justify-between">
                             <span>{idx + 1}. {name}</span>
-                            <span className="text-[10px] text-teal-700 font-mono">Gemini AI</span>
+                            <span className="text-[10px] text-teal-700 font-mono">AI Engine</span>
                           </div>
                         ))}
                       </div>

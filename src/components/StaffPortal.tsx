@@ -52,6 +52,7 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
   const [studentMarks, setStudentMarks] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [institutionName] = useState(() => localStorage.getItem('user_institution') || '');
 
   const [newNoticeTitle, setNewNoticeTitle] = useState('');
   const [newNoticeContent, setNewNoticeContent] = useState('');
@@ -222,45 +223,8 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
       {/* Four Small Square Windows Selection Interface + Compressed Live Communication Channel on Main Window */}
       {!activeTab ? (
         <div className="space-y-8 py-4">
-          {/* Main Title Banner */}
-          <div className="text-center space-y-2 max-w-xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200/80 text-xs font-extrabold uppercase tracking-widest shadow-2xs">
-              <Sparkles className="w-4 h-4 text-teal-600 animate-pulse" />
-              <span>Executive Educator Portal</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Staffroom Workspace</h2>
-            <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em]">Four Primary Administrative Terminals</p>
-          </div>
-          
-          {/* Four Enhanced Windows Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 w-full max-w-5xl mx-auto px-2 sm:px-0">
-            {/* Window 1: Notices */}
-            <button
-              onClick={() => setActiveTab('notices')}
-              className="group relative w-full rounded-3xl p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-purple-500/10 bg-white border-2 border-slate-200/80 hover:border-purple-400 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
-            >
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold tracking-wide uppercase">
-                {announcements.length} Memos
-              </div>
-
-              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-3xl bg-gradient-to-br from-purple-50 via-purple-100/60 to-indigo-100 group-hover:from-purple-100 group-hover:to-indigo-200 border-2 border-purple-200/80 flex items-center justify-center transition-all shadow-md shadow-purple-500/10 group-hover:scale-110">
-                <Bell className="w-10 h-10 sm:w-11 sm:h-11 text-purple-600 group-hover:text-purple-700 transition-colors drop-shadow-xs" />
-              </div>
-
-              <div className="space-y-1 w-full">
-                <span className="block text-base sm:text-lg font-black text-slate-900 group-hover:text-purple-700 transition-colors">
-                  Official Notices
-                </span>
-                <span className="block text-xs font-bold text-slate-400">
-                  Circulars & Memos
-                </span>
-              </div>
-
-              <div className="w-full pt-3 border-t border-slate-100 flex items-center justify-center gap-1 text-xs font-extrabold text-purple-600 group-hover:gap-2 transition-all">
-                <span>Access Terminal</span>
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </button>
+          {/* Three Enhanced Windows Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 w-full max-w-5xl mx-auto px-2 sm:px-0">
 
             {/* Window 2: Staff Registry */}
             <button
@@ -345,34 +309,6 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                 <ChevronRight className="w-4 h-4" />
               </div>
             </button>
-
-            {/* Window 5: My Classes */}
-            <button
-              onClick={() => setActiveTab('my-classes')}
-              className="group relative w-full rounded-3xl p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 bg-white border-2 border-slate-200/80 hover:border-amber-400 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden sm:col-span-2 lg:col-span-1"
-            >
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold tracking-wide uppercase">
-                Assigned Rosters
-              </div>
-
-              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-3xl bg-gradient-to-br from-amber-50 via-amber-100/60 to-orange-100 group-hover:from-amber-100 group-hover:to-orange-200 border-2 border-amber-200/80 flex items-center justify-center transition-all shadow-md shadow-amber-500/10 group-hover:scale-110">
-                <Users className="w-10 h-10 sm:w-11 sm:h-11 text-amber-600 group-hover:text-amber-700 transition-colors drop-shadow-xs" />
-              </div>
-
-              <div className="space-y-1 w-full">
-                <span className="block text-base sm:text-lg font-black text-slate-900 group-hover:text-amber-700 transition-colors">
-                  My Classes
-                </span>
-                <span className="block text-xs font-bold text-slate-400">
-                  Assigned Teaching Rosters
-                </span>
-              </div>
-
-              <div className="w-full pt-3 border-t border-slate-100 flex items-center justify-center gap-1 text-xs font-extrabold text-amber-600 group-hover:gap-2 transition-all">
-                <span>View My Classes</span>
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </button>
           </div>
         </div>
       ) : (
@@ -392,7 +328,7 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                   {activeTab === 'notices' && 'Official Notices Hub'}
-                  {activeTab === 'directory' && 'National Staff Registry'}
+                  {activeTab === 'directory' && `${institutionName} Staff Registry`}
                   {activeTab === 'marks' && 'Regional Marks Entry'}
                   {activeTab === 'markbook' && 'Official Markbook Terminal'}
                   {activeTab === 'communication' && 'Staffroom Live Channel (End-to-End Command)'}
@@ -410,99 +346,6 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
               </button>
             )}
           </div>
-
-          {/* TAB 5: MY CLASSES FOR TEACHERS */}
-          {activeTab === 'my-classes' && (
-            <div className="space-y-6 w-full">
-              <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-full text-xs font-extrabold uppercase tracking-wider">
-                    <Users className="w-3.5 h-3.5 text-amber-300" />
-                    Assigned Educator Rosters
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">My Classes & Subject Allocations</h2>
-                  <p className="text-amber-100/80 text-sm max-w-2xl leading-relaxed">
-                    Official Ministry of Education assigned teaching classes, subject timetables, and student enrollment rosters.
-                  </p>
-                </div>
-                <div className="px-4 py-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 text-center shrink-0">
-                  <span className="block text-2xl font-black text-amber-300">4 Active</span>
-                  <span className="block text-[10px] font-bold text-amber-200 uppercase tracking-widest">Assigned Classes</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  {
-                    className: 'Grade 12 STEM-A',
-                    subject: 'Advanced Mathematics & Physics',
-                    studentsCount: 42,
-                    room: 'Science Lab 3',
-                    schedule: 'Mon, Wed, Fri (08:00 - 10:30)',
-                    status: 'Active Term 2',
-                    roster: ['Chanda Mwansa', 'Mutale Kasonde', 'Bwembya Chilufya', 'Taonga Zimba', 'Mwiinga Mweetwa']
-                  },
-                  {
-                    className: 'Grade 12 Science-B',
-                    subject: 'Chemistry & Biology Practical',
-                    studentsCount: 38,
-                    room: 'Chemistry Laboratory A',
-                    schedule: 'Tue, Thu (10:45 - 12:30)',
-                    status: 'Active Term 2',
-                    roster: ['Kabwe Musonda', 'Thandiwe Banda', 'Lombe Mulenga', 'Natasha Phiri']
-                  },
-                  {
-                    className: 'Grade 11 STEM-A',
-                    subject: 'Pure Mathematics & Additional Math',
-                    studentsCount: 45,
-                    room: 'Room 204',
-                    schedule: 'Mon, Wed, Thu (14:00 - 15:30)',
-                    status: 'Active Term 2',
-                    roster: ['Mapalo Chishimba', 'Chilekwa Kasongo', 'Kondwani Tembo']
-                  },
-                  {
-                    className: 'Grade 10 General-C',
-                    subject: 'Integrated Science & Physics',
-                    studentsCount: 40,
-                    room: 'Main Hall West',
-                    schedule: 'Tue, Fri (11:00 - 12:30)',
-                    status: 'Active Term 2',
-                    roster: ['Musonda Chibuye', 'Mwila Zulu', 'Chipo Njobvu']
-                  }
-                ].map((cls, idx) => (
-                  <div key={idx} className="bg-white rounded-3xl p-6 border-2 border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-black uppercase tracking-wider">
-                        {cls.status}
-                      </span>
-                      <span className="text-xs font-bold text-slate-500">{cls.room}</span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl font-extrabold text-slate-900">{cls.className}</h3>
-                      <p className="text-sm font-bold text-teal-700 mt-0.5">{cls.subject}</p>
-                    </div>
-
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/60 flex items-center justify-between text-xs font-bold text-slate-600">
-                      <span>Enrollment: <strong className="text-slate-900">{cls.studentsCount} Students</strong></span>
-                      <span>Schedule: <strong className="text-slate-900">{cls.schedule}</strong></span>
-                    </div>
-
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Enrolled Roster Sample</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cls.roster.map((stu, sIdx) => (
-                          <span key={sIdx} className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold">
-                            {stu}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* TAB 4: EXPANDED FULL END-TO-END STAFFROOM LIVE CHANNEL PAGE */}
           {activeTab === 'communication' && (
@@ -812,8 +655,8 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                     <GraduationCap className="w-9 h-9 drop-shadow-xs" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Active Licensed Teachers</p>
-                    <h3 className="text-3xl font-black text-slate-900 mt-0.5">54,320</h3>
+                    <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Total Active Staff</p>
+                    <h3 className="text-3xl font-black text-slate-900 mt-0.5">{filteredStaff.length}</h3>
                   </div>
                 </div>
 
@@ -823,7 +666,7 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Verified Accreditation</p>
-                    <h3 className="text-3xl font-black text-slate-900 mt-0.5">98.4%</h3>
+                    <h3 className="text-3xl font-black text-slate-900 mt-0.5">100%</h3>
                   </div>
                 </div>
 
@@ -832,8 +675,8 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                     <FileText className="w-9 h-9 drop-shadow-xs" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Pending License Renewals</p>
-                    <h3 className="text-3xl font-black text-slate-900 mt-0.5">412</h3>
+                    <p className="text-xs text-slate-400 font-extrabold uppercase tracking-wider">Pending Tasks</p>
+                    <h3 className="text-3xl font-black text-slate-900 mt-0.5">0</h3>
                   </div>
                 </div>
               </div>

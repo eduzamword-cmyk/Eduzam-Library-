@@ -165,12 +165,46 @@ const REACTION_STICKERS = [
   }
 ];
 
-// High quality client-side image compression
+// High efficiency client-side image compression & size reduction
 function compressImage(file: File): Promise<{ base64: string; sizeFormatted: string }> {
   return new Promise((resolve, reject) => {
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Selected image exceeds 3MB limit. Please upload an image under 3MB.');
+      return reject(new Error('Image exceeds 3MB limit'));
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
-      resolve({ base64: e.target?.result as string, sizeFormatted: '' });
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const maxDim = 800; // Cap dimension to 800px for lightweight delivery
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
+          // Estimate approx KB size of compressed data URL
+          const approxBytes = Math.round((compressedBase64.length * 3) / 4);
+          const sizeFormatted = `${(approxBytes / 1024).toFixed(1)} KB`;
+          resolve({ base64: compressedBase64, sizeFormatted });
+        } else {
+          resolve({ base64: e.target?.result as string, sizeFormatted: `${(file.size / 1024).toFixed(1)} KB` });
+        }
+      };
+      img.onerror = () => resolve({ base64: e.target?.result as string, sizeFormatted: `${(file.size / 1024).toFixed(1)} KB` });
+      img.src = e.target?.result as string;
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);

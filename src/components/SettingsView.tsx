@@ -71,7 +71,7 @@ async function getCroppedImg(
 
   if (!ctx) return imageSrc;
 
-  const outputSize = 300;
+  const outputSize = 200;
   canvas.width = outputSize;
   canvas.height = outputSize;
 
@@ -90,7 +90,7 @@ async function getCroppedImg(
     outputSize
   );
 
-  return canvas.toDataURL('image/jpeg', 0.88);
+  return canvas.toDataURL('image/jpeg', 0.75);
 }
 
 export default function SettingsView() {
@@ -149,6 +149,12 @@ export default function SettingsView() {
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Selected photo exceeds 2MB limit. Please select a photo under 2MB.');
+      e.target.value = '';
+      return;
+    }
 
     setIsCompressing(true);
     const reader = new FileReader();

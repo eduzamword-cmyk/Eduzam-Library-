@@ -1,154 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  FileCheck2, 
-  Search, 
   Printer, 
   Download, 
   Save, 
-  CheckCircle2, 
-  User, 
-  BookOpen, 
-  Award, 
-  Building2, 
-  Sparkles,
-  ChevronRight,
-  Send,
-  Calendar,
-  AlertCircle
+  ChevronLeft, 
+  ChevronRight, 
+  Edit3, 
+  Check, 
+  RefreshCw 
 } from 'lucide-react';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { SchoolCrest } from './SchoolCrest';
+import { 
+  StudentReport, 
+  CBCSubjectMark, 
+  LearnerRating, 
+  LearnerProfileRatings, 
+  calculateCBCGrade, 
+  getDefaultRemark 
+} from '../types/reportCard';
+import { INITIAL_STUDENTS_DATABASE } from '../data/initialReports';
 
 interface ReportFormsProps {
   onNavigate?: (view: string) => void;
 }
 
-interface StudentReport {
-  id: string;
-  name: string;
-  nrc: string;
-  className: string;
-  term: string;
-  year: string;
-  attendance: string;
-  totalDays: string;
-  conduct: string;
-  teacherComment: string;
-  headteacherComment: string;
-  status: 'Draft' | 'Approved' | 'Published';
-  subjects: {
-    name: string;
-    code: string;
-    sbaScore: number;
-    examScore: number;
-    totalMark: number;
-    grade: string;
-    remark: string;
-  }[];
-}
-
-const DEFAULT_CLASSES = [
-  'Grade 12 STEM-A',
-  'Grade 12 Science-B',
-  'Grade 11 Arts-A',
-  'Grade 10 Commerce-C',
-  'Grade 9 General'
-];
-
-const INITIAL_STUDENTS: StudentReport[] = [
-  {
-    id: '2026-0001',
-    name: 'Chanda Mwansa',
-    nrc: '298102/11/1',
-    className: 'Grade 12 STEM-A',
-    term: 'Term 2',
-    year: '2026',
-    attendance: '62',
-    totalDays: '65',
-    conduct: 'Exemplary',
-    teacherComment: 'Chanda continues to demonstrate outstanding intellectual rigor in STEM subjects. Consistently top of class in Physics and Mathematics.',
-    headteacherComment: 'A stellar candidate for National ECZ Distinction. Recommended for Ministry Excellence Bursary.',
-    status: 'Published',
-    subjects: [
-      { name: 'Mathematics', code: 'MATH', sbaScore: 28, examScore: 67, totalMark: 95, grade: '1 (Distinction)', remark: 'Exceptional problem solver' },
-      { name: 'Physics', code: 'PHY', sbaScore: 27, examScore: 65, totalMark: 92, grade: '1 (Distinction)', remark: 'Mastered laboratory experiments' },
-      { name: 'Chemistry', code: 'CHEM', sbaScore: 26, examScore: 61, totalMark: 87, grade: '1 (Distinction)', remark: 'Strong theoretical comprehension' },
-      { name: 'Biology', code: 'BIO', sbaScore: 25, examScore: 59, totalMark: 84, grade: '2 (Distinction)', remark: 'Very thorough practical analysis' },
-      { name: 'English Language', code: 'ENG', sbaScore: 24, examScore: 54, totalMark: 78, grade: '2 (Distinction)', remark: 'Articulate essay writing' },
-      { name: 'Computer Studies', code: 'CS', sbaScore: 29, examScore: 66, totalMark: 95, grade: '1 (Distinction)', remark: 'Exceptional algorithm design' }
-    ]
-  },
-  {
-    id: '2026-0002',
-    name: 'Mutale Kasonde',
-    nrc: '341908/10/1',
-    className: 'Grade 12 STEM-A',
-    term: 'Term 2',
-    year: '2026',
-    attendance: '60',
-    totalDays: '65',
-    conduct: 'Good',
-    teacherComment: 'Mutale shows consistent effort and dedication. Performs very strongly in laboratory practicals.',
-    headteacherComment: 'Solid academic progress. Promising examination candidate.',
-    status: 'Approved',
-    subjects: [
-      { name: 'Mathematics', code: 'MATH', sbaScore: 24, examScore: 58, totalMark: 82, grade: '2 (Distinction)', remark: 'Consistent mathematical logic' },
-      { name: 'Physics', code: 'PHY', sbaScore: 22, examScore: 52, totalMark: 74, grade: '3 (Merit)', remark: 'Good grasp of kinematics' },
-      { name: 'Chemistry', code: 'CHEM', sbaScore: 23, examScore: 53, totalMark: 76, grade: '2 (Distinction)', remark: 'Well-structured lab logs' },
-      { name: 'Biology', code: 'BIO', sbaScore: 21, examScore: 48, totalMark: 69, grade: '4 (Merit)', remark: 'Active class participant' },
-      { name: 'English Language', code: 'ENG', sbaScore: 22, examScore: 50, totalMark: 72, grade: '3 (Merit)', remark: 'Clear vocabulary' }
-    ]
-  },
-  {
-    id: '2026-0003',
-    name: 'Bwembya Chilufya',
-    nrc: '412093/11/1',
-    className: 'Grade 12 STEM-A',
-    term: 'Term 2',
-    year: '2026',
-    attendance: '58',
-    totalDays: '65',
-    conduct: 'Very Good',
-    teacherComment: 'Bwembya is hardworking and attentive. With focused revision in Mathematics, top distinction is well within reach.',
-    headteacherComment: 'Encouraging results. Keep up the high standard.',
-    status: 'Draft',
-    subjects: [
-      { name: 'Mathematics', code: 'MATH', sbaScore: 20, examScore: 45, totalMark: 65, grade: '4 (Merit)', remark: 'Needs extra drill on calculus' },
-      { name: 'Physics', code: 'PHY', sbaScore: 22, examScore: 49, totalMark: 71, grade: '3 (Merit)', remark: 'Good analytical skills' },
-      { name: 'Chemistry', code: 'CHEM', sbaScore: 21, examScore: 47, totalMark: 68, grade: '4 (Merit)', remark: 'Satisfactory chemical equations' },
-      { name: 'English Language', code: 'ENG', sbaScore: 25, examScore: 55, totalMark: 80, grade: '2 (Distinction)', remark: 'Fluent expression' }
-    ]
-  }
-];
-
 export default function ReportForms({ onNavigate }: ReportFormsProps) {
-  const [selectedClass, setSelectedClass] = useState('Grade 12 STEM-A');
-  const [selectedTerm, setSelectedTerm] = useState('Term 2');
-  const [selectedYear, setSelectedYear] = useState('2026');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const [reports, setReports] = useState<StudentReport[]>(INITIAL_STUDENTS);
+  const [reports, setReports] = useState<StudentReport[]>(INITIAL_STUDENTS_DATABASE);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('2026-0001');
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
 
-  // Editable fields for selected report
-  const activeReport = reports.find(r => r.id === selectedStudentId) || reports[0];
-  const [teacherCommentInput, setTeacherCommentInput] = useState(activeReport?.teacherComment || '');
-  const [headCommentInput, setHeadCommentInput] = useState(activeReport?.headteacherComment || '');
-  const [conductInput, setConductInput] = useState(activeReport?.conduct || 'Exemplary');
-  const [statusInput, setStatusInput] = useState<'Draft' | 'Approved' | 'Published'>(activeReport?.status || 'Published');
+  // Active student report
+  const activeReport = useMemo(() => {
+    return reports.find(r => r.id === selectedStudentId) || reports[0] || INITIAL_STUDENTS_DATABASE[0];
+  }, [reports, selectedStudentId]);
 
-  useEffect(() => {
-    if (activeReport) {
-      setTeacherCommentInput(activeReport.teacherComment);
-      setHeadCommentInput(activeReport.headteacherComment);
-      setConductInput(activeReport.conduct);
-      setStatusInput(activeReport.status);
-    }
-  }, [selectedStudentId]);
-
-  // Firestore sync for report cards
+  // Sync with Firestore report_cards
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'report_cards'), (snapshot) => {
       if (!snapshot.empty) {
@@ -165,36 +55,115 @@ export default function ReportForms({ onNavigate }: ReportFormsProps) {
         }
       }
     }, (err) => {
-      console.warn('ReportForms Firestore listener notice:', err);
+      console.warn('Firestore report_cards sync note:', err);
     });
+
     return () => unsub();
   }, []);
 
+  // Performance calculations
+  const calculateSubjectRowAvg = (sub: CBCSubjectMark) => {
+    const numT1 = typeof sub.t1 === 'number' ? sub.t1 : parseFloat(sub.t1 as string) || 0;
+    const numT2 = typeof sub.t2 === 'number' ? sub.t2 : parseFloat(sub.t2 as string) || 0;
+    const numT3 = typeof sub.t3 === 'number' ? sub.t3 : parseFloat(sub.t3 as string) || 0;
+    const count = [numT1 > 0, numT2 > 0, numT3 > 0].filter(Boolean).length || 1;
+    return Math.round((numT1 + numT2 + numT3) / count);
+  };
+
+  const calculateOverallAverage = (report: StudentReport) => {
+    if (!report?.subjects || report.subjects.length === 0) return 0;
+    const sum = report.subjects.reduce((acc, sub) => {
+      const avg = sub.avg !== undefined ? sub.avg : calculateSubjectRowAvg(sub);
+      return acc + avg;
+    }, 0);
+    return Math.round(sum / report.subjects.length);
+  };
+
+  const calculateTermAverage = (report: StudentReport, termKey: 't1' | 't2' | 't3') => {
+    if (!report?.subjects || report.subjects.length === 0) return 0;
+    let count = 0;
+    const sum = report.subjects.reduce((acc, sub) => {
+      const val = typeof sub[termKey] === 'number' ? sub[termKey] : parseFloat(sub[termKey] as string) || 0;
+      if (val > 0) {
+        count++;
+        return acc + val;
+      }
+      return acc;
+    }, 0);
+    return count > 0 ? Math.round(sum / count) : 0;
+  };
+
+  // Student Navigation
+  const handlePrevStudent = () => {
+    const currentIndex = reports.findIndex(r => r.id === selectedStudentId);
+    if (currentIndex > 0) {
+      setSelectedStudentId(reports[currentIndex - 1].id);
+    } else {
+      setSelectedStudentId(reports[reports.length - 1].id);
+    }
+  };
+
+  const handleNextStudent = () => {
+    const currentIndex = reports.findIndex(r => r.id === selectedStudentId);
+    if (currentIndex < reports.length - 1) {
+      setSelectedStudentId(reports[currentIndex + 1].id);
+    } else {
+      setSelectedStudentId(reports[0].id);
+    }
+  };
+
+  // In-place edits
+  const handleUpdateSubjectMark = (subjectId: number, field: 't1' | 't2' | 't3' | 'remarks', val: string | number) => {
+    setReports(prev => prev.map(r => {
+      if (r.id !== activeReport.id) return r;
+      const updatedSubjects = r.subjects.map(s => {
+        if (s.id !== subjectId) return s;
+        const updated = { ...s, [field]: val };
+        const newAvg = calculateSubjectRowAvg(updated);
+        const gradeInfo = calculateCBCGrade(newAvg);
+        return {
+          ...updated,
+          avg: newAvg,
+          grade: gradeInfo.grade,
+          remarks: field === 'remarks' ? (val as string) : (s.remarks || getDefaultRemark(gradeInfo.grade))
+        };
+      });
+      return { ...r, subjects: updatedSubjects };
+    }));
+  };
+
+  const handleUpdateLearnerRating = (field: keyof LearnerProfileRatings, rating: LearnerRating) => {
+    setReports(prev => prev.map(r => {
+      if (r.id !== activeReport.id) return r;
+      return {
+        ...r,
+        learnerProfile: {
+          ...r.learnerProfile,
+          [field]: rating
+        }
+      };
+    }));
+  };
+
+  const handleUpdateField = (field: keyof StudentReport, val: any) => {
+    setReports(prev => prev.map(r => {
+      if (r.id !== activeReport.id) return r;
+      return { ...r, [field]: val };
+    }));
+  };
+
+  // Save report to firestore
   const handleSaveReport = async () => {
     if (!activeReport) return;
     setIsSaving(true);
-    setSaveMessage(null);
-
-    const updatedReport: StudentReport = {
-      ...activeReport,
-      teacherComment: teacherCommentInput,
-      headteacherComment: headCommentInput,
-      conduct: conductInput,
-      status: statusInput,
-      term: selectedTerm,
-      year: selectedYear,
-      className: selectedClass
-    };
-
     try {
-      await setDoc(doc(db, 'report_cards', activeReport.id), updatedReport, { merge: true });
-      setReports(prev => prev.map(r => r.id === activeReport.id ? updatedReport : r));
-      setSaveMessage('Official Report Card successfully saved & synchronized!');
-      setTimeout(() => setSaveMessage(null), 3500);
+      await setDoc(doc(db, 'report_cards', activeReport.id), activeReport, { merge: true });
+      setSaveToast(`Report saved for ${activeReport.name}`);
+      setTimeout(() => setSaveToast(null), 3000);
     } catch (err) {
-      console.error('Save report error:', err);
-      setSaveMessage('Saved locally. Network sync pending.');
-      setTimeout(() => setSaveMessage(null), 3500);
+      console.warn('Saved locally notice:', err);
+      setSaveToast(`Report saved locally`);
+      setTimeout(() => setSaveToast(null), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -204,358 +173,627 @@ export default function ReportForms({ onNavigate }: ReportFormsProps) {
     window.print();
   };
 
-  const filteredReports = reports.filter(r => 
-    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.nrc.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const overallAvg = calculateOverallAverage(activeReport);
+  const t1Avg = calculateTermAverage(activeReport, 't1');
+  const t2Avg = calculateTermAverage(activeReport, 't2');
+  const t3Avg = calculateTermAverage(activeReport, 't3');
+  const attendancePercentage = activeReport.daysOpened > 0 
+    ? Math.round((activeReport.daysPresent / activeReport.daysOpened) * 100) 
+    : 100;
+  const currentOverallGrade = calculateCBCGrade(overallAvg);
 
-  const calculateOverallPercentage = (report: StudentReport) => {
-    if (!report.subjects || report.subjects.length === 0) return 0;
-    const sum = report.subjects.reduce((acc, sub) => acc + sub.totalMark, 0);
-    return Math.round(sum / report.subjects.length);
-  };
+  const profileKeys: { key: keyof LearnerProfileRatings; label: string }[] = [
+    { key: 'attendance', label: '1. Attendance' },
+    { key: 'punctuality', label: '2. Punctuality' },
+    { key: 'discipline', label: '3. Discipline' },
+    { key: 'initiative', label: '4. Initiative and Self-Reliance' },
+    { key: 'cooperation', label: '5. Co-operation and Teamwork' },
+    { key: 'respect', label: '6. Respect for Others' },
+    { key: 'neatness', label: '7. Neatness and Orderliness' },
+    { key: 'cocurricular', label: '8. Participation in Co-curricular Activities' },
+  ];
+
+  const ratingOptions: LearnerRating[] = ['E', 'VG', 'G', 'S', 'N'];
 
   return (
-    <div className="w-full space-y-6 pb-12 font-sans text-slate-900">
+    <div className="w-full font-sans text-slate-900 bg-slate-100 min-h-screen pb-6">
       
-      {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-emerald-500/30 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-black uppercase tracking-wider">
-              <FileCheck2 className="w-4 h-4 text-emerald-400" />
-              <span>Ministry of Education Official Academic Terminal</span>
+      {/* ------------------------------------------------------------- */}
+      {/* TOP CONTROL BAR (Clean & Compact)                            */}
+      {/* ------------------------------------------------------------- */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-3 sm:px-6 py-2 shadow-xs no-print">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          
+          {/* Candidate Selector */}
+          <div className="flex items-center gap-1.5">
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('dashboard')}
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                title="Back to Dashboard"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
+
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+              <button
+                onClick={handlePrevStudent}
+                className="p-1 hover:bg-white rounded text-slate-700 cursor-pointer transition"
+                title="Previous Student"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-900 px-2 py-0.5 focus:outline-none cursor-pointer"
+              >
+                {reports.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} — {student.gradeClass}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleNextStudent}
+                className="p-1 hover:bg-white rounded text-slate-700 cursor-pointer transition"
+                title="Next Student"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-              Official Student Report Forms
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl font-medium">
-              Generate, record, verify, and issue ECZ-standard termly report cards for all candidate accounts across all academic streams.
-            </p>
-          </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2.5 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-extrabold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-emerald-700" />
-              <span>Print Report</span>
-            </button>
-            <button
-              onClick={handleSaveReport}
-              disabled={isSaving}
-              className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/30 active:scale-95 cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSaving ? 'Saving...' : 'Save & Publish'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {saveMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-extrabold flex items-center gap-2 animate-fade-in shadow-2xs">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{saveMessage}</span>
-        </div>
-      )}
-
-      {/* Filter Bar Controls */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Academic Class</label>
-          <select 
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-          >
-            {DEFAULT_CLASSES.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Academic Term</label>
-          <select 
-            value={selectedTerm}
-            onChange={(e) => setSelectedTerm(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-          >
-            <option value="Term 1">Term 1 (Jan - April)</option>
-            <option value="Term 2">Term 2 (May - Aug)</option>
-            <option value="Term 3">Term 3 (Sept - Dec)</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Academic Year</label>
-          <select 
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-          >
-            <option value="2026">2026 Academic Year</option>
-            <option value="2025">2025 Academic Year</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Search Candidate Account</label>
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-            <input 
-              type="text" 
-              placeholder="Filter student name / NRC..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Dual-Column Interface */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left Column: Student Roster Selector */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-teal-600" />
-              <h2 className="text-sm font-black text-slate-900 tracking-tight uppercase">Class Candidate Accounts</h2>
-            </div>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 font-extrabold">
-              {filteredReports.length} Accounts
+            <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+              ({reports.findIndex(r => r.id === selectedStudentId) + 1} of {reports.length})
             </span>
           </div>
 
-          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-            {filteredReports.map((student) => {
-              const isSelected = student.id === selectedStudentId;
-              const overallPerc = calculateOverallPercentage(student);
-              return (
-                <button
-                  key={student.id}
-                  onClick={() => setSelectedStudentId(student.id)}
-                  className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    isSelected 
-                      ? 'bg-gradient-to-r from-teal-700 to-emerald-700 text-white border-teal-600 shadow-md scale-[1.01]' 
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-800'
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className={`font-black text-xs sm:text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                      {student.name}
-                    </p>
-                    <p className={`text-[10px] font-mono mt-0.5 ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
-                      NRC: {student.nrc}
-                    </p>
-                  </div>
+          {/* Actions */}
+          <div className="flex items-center gap-1.5">
+            
+            {/* In-Place Edit Mode */}
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border ${
+                isEditing 
+                  ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-2xs' 
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>{isEditing ? 'Done Editing' : 'Edit Marks'}</span>
+            </button>
 
-                  <div className="text-right shrink-0">
-                    <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
-                      student.status === 'Published'
-                        ? isSelected ? 'bg-emerald-400/30 text-white' : 'bg-emerald-100 text-emerald-800'
-                        : isSelected ? 'bg-amber-400/30 text-white' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {student.status}
-                    </span>
-                    <p className={`text-xs font-black mt-1 ${isSelected ? 'text-white' : 'text-slate-700'}`}>
-                      {overallPerc}% Avg
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
+            {/* Print / PDF */}
+            <button
+              onClick={handlePrint}
+              className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs border border-slate-200 flex items-center gap-1 transition cursor-pointer"
+              title="Print Form"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-600" />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-emerald-700 font-bold text-xs border border-slate-200 flex items-center gap-1 transition cursor-pointer"
+              title="Save as PDF"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+
+            {/* Save */}
+            <button
+              onClick={handleSaveReport}
+              disabled={isSaving}
+              className="px-3 py-1.5 rounded-lg bg-[#0f2942] hover:bg-[#1a3f65] text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            >
+              {isSaving ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5 text-amber-300" />
+              )}
+              <span>Save</span>
+            </button>
           </div>
-        </div>
 
-        {/* Right Column: Full Official Report Form Preview & Editor */}
-        <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-md space-y-6 print:border-none print:shadow-none print:p-0">
+        </div>
+      </div>
+
+      {/* Save Notification Toast */}
+      {saveToast && (
+        <div className="fixed bottom-4 right-4 z-50 bg-[#0f2942] text-white px-3 py-2 rounded-xl shadow-lg border border-slate-700 text-xs font-bold flex items-center gap-2 animate-fade-in no-print">
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span>{saveToast}</span>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* SIMPLIFIED OFFICIAL ZAMBIA REPORT FORM SHEET                  */}
+      {/* ------------------------------------------------------------- */}
+      <div className="max-w-4xl mx-auto px-2 pt-3">
+        <div 
+          id="report-form-sheet"
+          className="bg-white border border-slate-700 rounded-lg p-3 sm:p-4 shadow-sm text-slate-900 space-y-2.5 print:p-0 print:border-none print:shadow-none print:rounded-none"
+        >
           
-          {activeReport ? (
-            <div className="space-y-6">
-              
-              {/* Report Header Card */}
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 text-white border border-slate-700 space-y-4 relative overflow-hidden">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-700/80">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-teal-500 text-slate-950 flex items-center justify-center font-black text-xl shadow-md">
-                      <Building2 className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-white tracking-tight uppercase">Ministry of Education - Zambia</h3>
-                      <p className="text-xs font-bold text-teal-300">Official National Candidate Progress Report</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-black uppercase">
-                      {selectedTerm} • {selectedYear}
-                    </span>
-                  </div>
-                </div>
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-800">
+            {/* Crest */}
+            <div className="w-16 sm:w-20 shrink-0 flex items-center justify-center">
+              <SchoolCrest className="w-14 h-14 sm:w-16 sm:h-16" />
+            </div>
 
-                {/* Candidate Particulars */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs pt-1">
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400 block">Candidate Name</span>
-                    <span className="font-extrabold text-white text-sm">{activeReport.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400 block">National NRC / ID</span>
-                    <span className="font-mono font-extrabold text-teal-300 text-sm">{activeReport.nrc}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400 block">Stream & Class</span>
-                    <span className="font-bold text-white">{selectedClass}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400 block">Attendance Record</span>
-                    <span className="font-bold text-emerald-400">{activeReport.attendance} / {activeReport.totalDays} Days</span>
-                  </div>
-                </div>
-              </div>
+            {/* National Title */}
+            <div className="flex-1 text-center">
+              <h2 className="text-[11px] font-black tracking-widest text-slate-800 uppercase leading-none">
+                REPUBLIC OF ZAMBIA
+              </h2>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#0f2942] uppercase leading-tight py-0.5">
+                SCHOOL REPORT FORM
+              </h1>
+              <p className="text-[10px] font-black tracking-wider text-slate-700 uppercase leading-none">
+                — COMPETENCY BASED CURRICULUM (CBC) —
+              </p>
+            </div>
 
-              {/* Subject Results Table */}
-              <div className="space-y-3">
+            {/* Report No & Photo Box */}
+            <div className="w-28 sm:w-32 shrink-0 border border-slate-700 rounded overflow-hidden text-[10px]">
+              <div className="p-1 border-b border-slate-700 bg-slate-50 space-y-0.5">
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="font-black text-slate-700">REPORT NO.</span>
+                  {isEditing ? (
+                    <input 
+                      type="text" 
+                      value={activeReport.reportNo} 
+                      onChange={(e) => handleUpdateField('reportNo', e.target.value)}
+                      className="border-b border-dotted border-slate-700 font-mono text-[9px] w-12 text-right bg-amber-50"
+                    />
+                  ) : (
+                    <span className="font-mono font-bold text-slate-900">{activeReport.reportNo || '2026-01'}</span>
+                  )}
+                </div>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-teal-600" />
-                    <span>Academic Performance Breakdown</span>
-                  </h4>
-                  <span className="text-xs font-bold text-slate-500">ECZ Weighted 30% SBA + 70% Exam</span>
+                  <span className="text-[9px] font-black text-slate-700">YEAR</span>
+                  {isEditing ? (
+                    <input 
+                      type="text" 
+                      value={activeReport.year} 
+                      onChange={(e) => handleUpdateField('year', e.target.value)}
+                      className="font-black text-[11px] text-[#0f2942] w-10 text-right bg-amber-50"
+                    />
+                  ) : (
+                    <span className="font-black text-xs text-[#0f2942]">{activeReport.year}</span>
+                  )}
                 </div>
+              </div>
+              <div className="h-10 flex items-center justify-center bg-white">
+                <div className="w-full h-full border border-dashed border-slate-300 flex items-center justify-center bg-slate-50/50">
+                  <span className="text-[9px] font-black uppercase text-slate-400">PHOTO</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
-                        <th className="p-3">Subject</th>
-                        <th className="p-3 text-center">SBA (30%)</th>
-                        <th className="p-3 text-center">Exam (70%)</th>
-                        <th className="p-3 text-center">Total (/100)</th>
-                        <th className="p-3 text-center">ECZ Grade</th>
-                        <th className="p-3">Educator Remark</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                      {activeReport.subjects.map((sub, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3 font-extrabold text-slate-900">{sub.name}</td>
-                          <td className="p-3 text-center font-bold text-slate-600">{sub.sbaScore}</td>
-                          <td className="p-3 text-center font-bold text-slate-600">{sub.examScore}</td>
-                          <td className="p-3 text-center font-black text-slate-900 text-sm">{sub.totalMark}</td>
-                          <td className="p-3 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                              sub.totalMark >= 75 
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                                : sub.totalMark >= 60 
-                                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                                  : 'bg-amber-100 text-amber-800 border border-amber-300'
-                            }`}>
-                              {sub.grade}
-                            </span>
-                          </td>
-                          <td className="p-3 text-slate-600 italic text-[11px]">{sub.remark}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          {/* Particulars */}
+          <div className="space-y-1.5 text-[11px] font-bold text-slate-900">
+            {/* School Name */}
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-black text-slate-900 shrink-0">SCHOOL NAME:</span>
+              <div className="flex-1 border-b border-dotted border-slate-800 pb-0.5 px-1">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={activeReport.schoolName}
+                    onChange={(e) => handleUpdateField('schoolName', e.target.value)}
+                    className="w-full bg-amber-50 text-[11px] font-bold text-slate-900 focus:outline-none uppercase"
+                  />
+                ) : (
+                  <span className="font-black uppercase">{activeReport.schoolName}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Pupil Name */}
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-black text-slate-900 shrink-0">PUPIL'S NAME:</span>
+              <div className="flex-1 border-b border-dotted border-slate-800 pb-0.5 px-1">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={activeReport.name}
+                    onChange={(e) => handleUpdateField('name', e.target.value)}
+                    className="w-full bg-amber-50 text-[11px] font-black text-slate-950 focus:outline-none uppercase tracking-wide"
+                  />
+                ) : (
+                  <span className="font-black text-slate-950 uppercase tracking-wide">{activeReport.name}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Grade, Stream, Term */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-black shrink-0">GRADE:</span>
+                <div className="flex-1 border-b border-dotted border-slate-800 pb-0.5 px-1">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={activeReport.gradeClass}
+                      onChange={(e) => handleUpdateField('gradeClass', e.target.value)}
+                      className="w-full bg-amber-50 text-[11px] font-bold uppercase"
+                    />
+                  ) : (
+                    <span>{activeReport.gradeClass}</span>
+                  )}
                 </div>
               </div>
 
-              {/* Overall Summary & Conduct Section */}
-              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/90 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <span className="text-[10px] font-black uppercase text-slate-400 block">Average Overall Mark</span>
-                  <span className="text-2xl font-black text-teal-800">{calculateOverallPercentage(activeReport)}%</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase text-slate-400 block">National Grade Distinction</span>
-                  <span className="text-base font-extrabold text-emerald-700">Division 1 Distinction</span>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Conduct Rating</label>
-                  <select
-                    value={conductInput}
-                    onChange={(e) => setConductInput(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none"
-                  >
-                    <option value="Exemplary">Exemplary</option>
-                    <option value="Very Good">Very Good</option>
-                    <option value="Good">Good</option>
-                    <option value="Satisfactory">Satisfactory</option>
-                  </select>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-black shrink-0">STREAM:</span>
+                <div className="flex-1 border-b border-dotted border-slate-800 pb-0.5 px-1">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={activeReport.stream}
+                      onChange={(e) => handleUpdateField('stream', e.target.value)}
+                      className="w-full bg-amber-50 text-[11px] font-bold uppercase"
+                    />
+                  ) : (
+                    <span>{activeReport.stream || 'A'}</span>
+                  )}
                 </div>
               </div>
 
-              {/* Educator Remarks & Endorsement Form */}
-              <div className="space-y-4 pt-2">
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                    Class Teacher Remarks
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={teacherCommentInput}
-                    onChange={(e) => setTeacherCommentInput(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-                    placeholder="Enter comprehensive class teacher progress notes..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                    Headteacher / Principal Endorsement
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={headCommentInput}
-                    onChange={(e) => setHeadCommentInput(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
-                    placeholder="Headteacher official endorsement comment..."
-                  />
-                </div>
-
-                {/* Status Selection & Save Footer */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-600">Publication Status:</span>
-                    <select
-                      value={statusInput}
-                      onChange={(e) => setStatusInput(e.target.value as any)}
-                      className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-none"
+              <div className="flex items-center gap-2">
+                <span className="font-black shrink-0">TERM:</span>
+                {(['1ST TERM', '2ND TERM', '3RD TERM'] as const).map((t) => {
+                  const isChecked = activeReport.term === t;
+                  return (
+                    <label 
+                      key={t}
+                      onClick={() => isEditing && handleUpdateField('term', t)}
+                      className={`flex items-center gap-1 cursor-pointer text-[10px] ${
+                        isChecked ? 'font-black text-slate-950' : 'text-slate-600'
+                      }`}
                     >
-                      <option value="Draft">Draft (Internal)</option>
-                      <option value="Approved">Approved (School Admin)</option>
-                      <option value="Published">Published (Student Portal)</option>
-                    </select>
-                  </div>
+                      <span className={`w-3 h-3 rounded-xs border border-slate-700 flex items-center justify-center text-[9px] ${
+                        isChecked ? 'bg-slate-900 text-white font-black' : 'bg-white'
+                      }`}>
+                        {isChecked ? '✓' : ''}
+                      </span>
+                      <span>{t.split(' ')[0]}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
-                  <button
-                    onClick={handleSaveReport}
-                    disabled={isSaving}
-                    className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Save Report Form Updates</span>
-                  </button>
+          {/* Subjects Evaluation Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-slate-600 text-left text-[10.5px]">
+              <thead>
+                <tr className="bg-[#0f2942] text-white text-[10px] font-black uppercase">
+                  <th className="border border-slate-500 py-1 px-1 text-center w-6">#</th>
+                  <th className="border border-slate-500 py-1 px-2">LEARNING AREAS / SUBJECTS</th>
+                  <th className="border border-slate-500 py-0.5 px-0.5 text-center" colSpan={4}>
+                    <div className="text-center font-black pb-0.5 border-b border-slate-500">TERM MARKS</div>
+                    <div className="grid grid-cols-4 text-center font-bold text-[9px] pt-0.5">
+                      <span>T1</span>
+                      <span>T2</span>
+                      <span>T3</span>
+                      <span>AVG</span>
+                    </div>
+                  </th>
+                  <th className="border border-slate-500 py-1 px-1 text-center w-10">GRADE</th>
+                  <th className="border border-slate-500 py-1 px-2">REMARKS</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-300 font-semibold">
+                {activeReport.subjects.map((sub, idx) => {
+                  const rowAvg = sub.avg !== undefined ? sub.avg : calculateSubjectRowAvg(sub);
+                  const gradeInfo = calculateCBCGrade(rowAvg);
+                  const grade = sub.grade || gradeInfo.grade;
+                  const remarks = sub.remarks || getDefaultRemark(grade);
+
+                  return (
+                    <tr key={sub.id || idx} className="hover:bg-slate-50">
+                      <td className="border border-slate-500 py-0.5 px-1 text-center text-slate-600 bg-slate-50">
+                        {idx + 1}
+                      </td>
+                      <td className="border border-slate-500 py-0.5 px-2 font-bold text-slate-900">
+                        {sub.name}
+                      </td>
+                      
+                      {/* Term 1 */}
+                      <td className="border border-slate-500 py-0.5 px-0.5 text-center font-mono font-bold w-8">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={sub.t1}
+                            onChange={(e) => handleUpdateSubjectMark(sub.id, 't1', e.target.value)}
+                            className="w-7 text-center bg-amber-50 font-bold focus:outline-none"
+                          />
+                        ) : (
+                          <span>{sub.t1}</span>
+                        )}
+                      </td>
+
+                      {/* Term 2 */}
+                      <td className="border border-slate-500 py-0.5 px-0.5 text-center font-mono font-bold w-8">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={sub.t2}
+                            onChange={(e) => handleUpdateSubjectMark(sub.id, 't2', e.target.value)}
+                            className="w-7 text-center bg-amber-50 font-bold focus:outline-none"
+                          />
+                        ) : (
+                          <span>{sub.t2}</span>
+                        )}
+                      </td>
+
+                      {/* Term 3 */}
+                      <td className="border border-slate-500 py-0.5 px-0.5 text-center font-mono font-bold w-8">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={sub.t3}
+                            onChange={(e) => handleUpdateSubjectMark(sub.id, 't3', e.target.value)}
+                            className="w-7 text-center bg-amber-50 font-bold focus:outline-none"
+                          />
+                        ) : (
+                          <span>{sub.t3}</span>
+                        )}
+                      </td>
+
+                      {/* Average */}
+                      <td className="border border-slate-500 py-0.5 px-0.5 text-center font-mono font-black text-slate-950 w-8 bg-slate-50">
+                        {rowAvg}
+                      </td>
+
+                      {/* Grade */}
+                      <td className="border border-slate-500 py-0.5 px-0.5 text-center font-black text-[#0f2942]">
+                        {grade}
+                      </td>
+
+                      {/* Remarks */}
+                      <td className="border border-slate-500 py-0.5 px-2 text-[10px] text-slate-800">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={sub.remarks || ''}
+                            onChange={(e) => handleUpdateSubjectMark(sub.id, 'remarks', e.target.value)}
+                            placeholder={getDefaultRemark(grade)}
+                            className="w-full bg-amber-50 text-[10px] focus:outline-none"
+                          />
+                        ) : (
+                          <span>{remarks}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* OVERALL AVERAGE */}
+                <tr className="font-black text-slate-950 text-[10.5px] bg-[#dbe4ee] border-t-2 border-slate-600">
+                  <td className="border border-slate-500 py-1 px-1 text-center" colSpan={2}>
+                    <span className="uppercase tracking-wide font-black">OVERALL AVERAGE</span>
+                  </td>
+                  <td className="border border-slate-500 py-1 px-0.5 text-center font-mono">{t1Avg}</td>
+                  <td className="border border-slate-500 py-1 px-0.5 text-center font-mono">{t2Avg}</td>
+                  <td className="border border-slate-500 py-1 px-0.5 text-center font-mono">{t3Avg}</td>
+                  <td className="border border-slate-500 py-1 px-0.5 text-center font-mono text-xs text-[#0f2942] bg-[#cddae7]">
+                    {overallAvg}
+                  </td>
+                  <td className="border border-slate-500 py-1 px-0.5 text-center text-xs text-[#0f2942]">
+                    {currentOverallGrade.grade}
+                  </td>
+                  <td className="border border-slate-500 py-1 px-2 text-[10px] font-bold text-[#0f2942]">
+                    {currentOverallGrade.desc} Performance
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Middle: Grading Key & Learner Profile */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 text-[10px]">
+            
+            {/* Grading Key */}
+            <div className="md:col-span-5 border border-slate-600 rounded overflow-hidden flex flex-col">
+              <div className="bg-[#dce7f2] py-0.5 px-2 text-center font-black text-[10px] text-[#0f2942] border-b border-slate-600 uppercase">
+                GRADING KEY
+              </div>
+              <div className="p-1 space-y-0.5 flex-1 flex flex-col justify-around text-[10px] font-bold text-slate-800 bg-white">
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-black w-4">A</span>
+                  <span className="font-mono text-slate-600 w-14 text-center">80 – 100</span>
+                  <span className="text-slate-900 flex-1 text-right">Excellent</span>
                 </div>
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-black w-4">B</span>
+                  <span className="font-mono text-slate-600 w-14 text-center">70 – 79</span>
+                  <span className="text-slate-900 flex-1 text-right">Very Good</span>
+                </div>
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-black w-4">C</span>
+                  <span className="font-mono text-slate-600 w-14 text-center">60 – 69</span>
+                  <span className="text-slate-900 flex-1 text-right">Good</span>
+                </div>
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-black w-4">D</span>
+                  <span className="font-mono text-slate-600 w-14 text-center">50 – 59</span>
+                  <span className="text-slate-900 flex-1 text-right">Satisfactory</span>
+                </div>
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-black w-4">E</span>
+                  <span className="font-mono text-slate-600 w-14 text-center">40 – 49</span>
+                  <span className="text-slate-900 flex-1 text-right">Fair</span>
+                </div>
+                <div className="flex items-center justify-between px-1">
+                  <span className="font-black w-4">F</span>
+                  <span className="font-mono text-slate-600 w-14 text-center">0 – 39</span>
+                  <span className="text-slate-900 flex-1 text-right">Needs Improvement</span>
+                </div>
+              </div>
+            </div>
 
+            {/* Learner Profile */}
+            <div className="md:col-span-7 border border-slate-600 rounded overflow-hidden">
+              <table className="w-full text-left text-[10px] border-collapse">
+                <thead>
+                  <tr className="bg-[#dce7f2] text-[#0f2942] text-[9.5px] font-black uppercase border-b border-slate-600">
+                    <th className="py-0.5 px-1.5 border-r border-slate-600">
+                      LEARNER PROFILE (NON-ACADEMIC)
+                    </th>
+                    <th className="py-0.5 text-center" colSpan={5}>
+                      <div className="text-[9px] font-black pb-0.2 border-b border-slate-600">RATING</div>
+                      <div className="grid grid-cols-5 text-center font-black text-[9px]">
+                        <span>E</span>
+                        <span>VG</span>
+                        <span>G</span>
+                        <span>S</span>
+                        <span>N</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-300 font-semibold">
+                  {profileKeys.map((item) => {
+                    const currentRating = activeReport.learnerProfile?.[item.key] || 'E';
+                    return (
+                      <tr key={item.key} className="hover:bg-slate-50">
+                        <td className="py-0.5 px-1.5 text-slate-900 font-bold border-r border-slate-400">
+                          {item.label}
+                        </td>
+                        {ratingOptions.map((r) => {
+                          const isSelected = currentRating === r;
+                          return (
+                            <td 
+                              key={r}
+                              onClick={() => isEditing && handleUpdateLearnerRating(item.key, r)}
+                              className={`py-0.5 text-center font-bold border-r last:border-r-0 border-slate-300 w-5 ${
+                                isEditing ? 'cursor-pointer hover:bg-amber-100' : ''
+                              }`}
+                            >
+                              {isSelected ? (
+                                <span className="font-black text-slate-950">✓</span>
+                              ) : (
+                                <span className="text-slate-300">·</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+          {/* Lower: Remarks & Attendance */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 text-[10px]">
+            {/* Teacher Remarks */}
+            <div className="md:col-span-7 border border-slate-600 rounded p-2 flex flex-col justify-between space-y-1 bg-white">
+              <div className="font-black text-[10px] text-slate-900 uppercase">
+                CLASS TEACHER'S REMARKS
+              </div>
+              {isEditing ? (
+                <textarea
+                  rows={2}
+                  value={activeReport.teacherRemarks}
+                  onChange={(e) => handleUpdateField('teacherRemarks', e.target.value)}
+                  className="w-full p-1 bg-amber-50 border border-amber-300 rounded text-[10px] font-semibold text-slate-900 focus:outline-none"
+                />
+              ) : (
+                <p className="text-[10px] font-semibold text-slate-900 italic py-0.5">
+                  "{activeReport.teacherRemarks}"
+                </p>
+              )}
+            </div>
+
+            {/* Attendance */}
+            <div className="md:col-span-5 border border-slate-600 rounded p-2 space-y-0.5 bg-white flex flex-col justify-between">
+              <div className="font-black text-[10px] text-slate-900 uppercase">
+                ATTENDANCE
+              </div>
+              <div className="space-y-0.5 text-[9.5px] font-bold">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-700">Days School Opened:</span>
+                  <span className="font-mono font-bold">{activeReport.daysOpened}</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-700">Days Present:</span>
+                  <span className="font-mono font-bold">{activeReport.daysPresent}</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-700">Days Absent:</span>
+                  <span className="font-mono font-bold">{activeReport.daysAbsent}</span>
+                </div>
+                <div className="flex items-baseline justify-between border-t border-slate-200 pt-0.5">
+                  <span className="text-slate-900 font-black">Percentage Attendance:</span>
+                  <span className="font-mono font-black text-emerald-800">{attendancePercentage}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Signatures & Stamp */}
+          <div className="border border-slate-600 rounded p-2 bg-white">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[9.5px] font-bold">
+              
+              {/* Class Teacher */}
+              <div className="space-y-0.5 border-b sm:border-b-0 sm:border-r border-slate-300 pb-1 sm:pb-0 sm:pr-2">
+                <div className="font-black text-[10px] text-slate-900 uppercase">CLASS TEACHER</div>
+                <div className="text-slate-800">Name: <span className="font-bold">{activeReport.teacherName}</span></div>
+                <div className="text-slate-800">Signature: <span className="font-serif italic text-blue-900">M. Phiri</span></div>
+                <div className="text-slate-600 text-[9px]">Date: {activeReport.teacherDate}</div>
+              </div>
+
+              {/* Head Teacher */}
+              <div className="space-y-0.5 border-b sm:border-b-0 sm:border-r border-slate-300 pb-1 sm:pb-0 sm:px-2">
+                <div className="font-black text-[10px] text-slate-900 uppercase">HEAD TEACHER</div>
+                <div className="text-slate-800">Name: <span className="font-bold">{activeReport.headTeacherName}</span></div>
+                <div className="text-slate-800">Signature: <span className="font-serif italic text-blue-900">Dr. G. K. Mwape</span></div>
+                <div className="text-slate-600 text-[9px]">Date: {activeReport.headTeacherDate}</div>
+                
+                {/* Stamp badge */}
+                <div className="mt-1 border border-blue-800 rounded-full px-2 py-0.5 text-center bg-blue-50/50 text-[7.5px] font-mono text-blue-900">
+                  ★ LUSAKA NATIONAL SEC. SCHOOL ★
+                </div>
+              </div>
+
+              {/* Parent */}
+              <div className="space-y-0.5 sm:pl-2">
+                <div className="font-black text-[10px] text-slate-900 uppercase">PARENT / GUARDIAN</div>
+                <div className="text-slate-800">Name: <span className="font-bold">{activeReport.parentName}</span></div>
+                <div className="text-slate-800">Signature: <span className="font-serif italic text-slate-600">........................</span></div>
+                <div className="text-slate-600 text-[9px]">Date: {activeReport.parentDate}</div>
               </div>
 
             </div>
-          ) : (
-            <div className="p-12 text-center text-slate-400 font-bold">
-              Select a candidate account from the left roster to view and edit official report forms.
-            </div>
-          )}
+          </div>
+
+          {/* Footer Motto */}
+          <div className="pt-1 text-center space-y-0.5 border-t border-slate-300">
+            <p className="text-[10.5px] font-black italic text-[#0f2942]">
+              “Quality Education for Development”
+            </p>
+            <p className="text-[8.5px] text-slate-500">
+              Note: This report is issued three times a year. Keep it safely and bring it when requested by the school.
+            </p>
+          </div>
 
         </div>
-
       </div>
 
     </div>
