@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { GoogleGenAI } from '@google/genai';
 import { 
-  Sparkles, 
+  Zap, 
   ClipboardPaste,
   ArrowLeft,
   Lock, 
@@ -43,7 +42,8 @@ import {
 } from 'lucide-react';
 
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const SUBJECTS = [
   { code: 'ENG', teacher: 'Mrs. G. Mulenga', locked: true },
@@ -253,23 +253,43 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
   };
 
   useEffect(() => {
-     const unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
-        setStudents(snap.docs.map(d => ({ dbId: d.id, ...d.data() })));
+     let unsubStudents = () => {};
+     let unsubMarks = () => {};
+
+     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        if (user) {
+           unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
+              setStudents(snap.docs.map(d => ({ dbId: d.id, ...d.data() })));
+           }, (error) => {
+              handleFirestoreError(error, OperationType.LIST, 'students');
+           });
+
+           unsubMarks = onSnapshot(collection(db, 'marks'), (snap) => {
+              const newMap: Record<string, Record<string, string>> = {};
+              snap.docs.forEach(d => {
+                 const data = d.data();
+                 if (data.studentId && data.subject && data.total !== undefined) {
+                    if (!newMap[data.studentId]) newMap[data.studentId] = {};
+                    newMap[data.studentId][data.subject] = data.total;
+                 }
+              });
+              setMarksMap(newMap);
+           }, (error) => {
+              handleFirestoreError(error, OperationType.LIST, 'marks');
+           });
+        } else {
+           unsubStudents();
+           unsubMarks();
+           setStudents([]);
+           setMarksMap({});
+        }
      });
 
-     const unsubMarks = onSnapshot(collection(db, 'marks'), (snap) => {
-        const newMap: Record<string, Record<string, string>> = {};
-        snap.docs.forEach(d => {
-           const data = d.data();
-           if (data.studentId && data.subject && data.total !== undefined) {
-              if (!newMap[data.studentId]) newMap[data.studentId] = {};
-              newMap[data.studentId][data.subject] = data.total;
-           }
-        });
-        setMarksMap(newMap);
-     });
-
-     return () => { unsubStudents(); unsubMarks(); };
+     return () => {
+        unsubStudents();
+        unsubMarks();
+        unsubscribeAuth();
+     };
   }, []);
 
   const handleSync = () => {
@@ -583,49 +603,45 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
   return (
     <div className={`flex flex-col w-full h-full overflow-hidden transition-colors ${theme === 'dark' ? 'bg-slate-900' : theme === 'emerald' ? 'bg-emerald-950' : theme === 'navy' ? 'bg-[#0b1120]' : 'bg-transparent'}`}>
       {/* Professional Icon Toolbar with Enhanced High-Clarity Icons & Backward Navigation */}
-      <div className={`border-b px-3 md:px-6 py-2 flex flex-wrap items-center justify-between gap-3 shadow-xs z-50 transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : theme === 'emerald' ? 'bg-emerald-900 border-emerald-800' : theme === 'navy' ? 'bg-[#1e293b] border-blue-900' : 'bg-white border-slate-200'}`}>
+      <div className={`border-b px-3 md:px-5 py-1.5 flex items-center justify-between gap-2 md:gap-3 shadow-xs z-50 transition-colors shrink-0 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : theme === 'emerald' ? 'bg-emerald-900 border-emerald-800' : theme === 'navy' ? 'bg-[#1e293b] border-blue-900' : 'bg-slate-100 border-slate-300'}`}>
         
         {/* Left Side: Backward Navigation Sign */}
-        <div className="flex items-center gap-2">
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('dashboard')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs active:scale-95 cursor-pointer ${
-                isDarkMode 
-                  ? 'bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
-              }`}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-          )}
-        </div>
+        {onNavigate ? (
+          <button
+            onClick={() => onNavigate('dashboard')}
+            className={`h-9 sm:h-10 inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 ${
+              isDarkMode 
+                ? 'bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600' 
+                : 'bg-white hover:bg-slate-200 text-slate-800 border border-slate-300'
+            }`}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back</span>
+          </button>
+        ) : <div className="w-9" />}
 
-        {/* Right Side Tools */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Action Icons Grid - Single Continuous Stretch of Square Containers & Lines */}
-          <div className={`inline-flex items-center rounded-xl border divide-x shadow-xs overflow-x-auto max-w-full ${
+        {/* Center: Action Icons Grid - Continuous Stretch of Square Containers & Lines */}
+        <div className={`inline-flex items-center rounded-xl border divide-x shadow-xs overflow-x-auto max-w-full h-9 sm:h-10 shrink-0 ${
           theme === 'dark' 
             ? 'bg-slate-800/90 border-slate-700 divide-slate-700' 
             : theme === 'emerald' 
             ? 'bg-emerald-900 border-emerald-800 divide-emerald-800' 
             : theme === 'navy' 
             ? 'bg-[#1e293b] border-blue-900 divide-blue-900' 
-            : 'bg-white border-slate-300 divide-slate-200'
+            : 'bg-slate-200/90 border-slate-300 divide-slate-300'
         }`}>
           {/* 1. Class Selector */}
           <button 
             onClick={() => setActiveModal('class')} 
             title="Select Class (Grade 12)" 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
               isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <GraduationCap className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+            <GraduationCap className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
           </button>
 
           {/* 2. Numerical Keypad */}
@@ -641,43 +657,43 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
               }
             }} 
             title="Numerical Keypad" 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
               showKeypad 
                 ? 'bg-black text-white dark:bg-white dark:text-black' 
                 : isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <Calculator className={`w-6 h-6 md:w-7 md:h-7 stroke-[2.25] ${showKeypad ? 'text-white dark:text-black' : 'text-black dark:text-white'}`} />
+            <Calculator className={`w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.25] ${showKeypad ? 'text-white dark:text-black' : 'text-black dark:text-white'}`} />
           </button>
 
           {/* 3. Quick Record (Scan / Paste) */}
           <button 
             onClick={() => setActiveModal('record')} 
             title="Scan & Quick Record (Camera / Paste / Upload)" 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
               isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <Camera className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+            <Camera className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
           </button>
 
           {/* 4. Add Student */}
           <button 
             onClick={() => setActiveModal('addStudent')} 
             title={isAdminOrSuperAdmin ? "Add Student Record (Admin / Super Admin)" : "Add Student Record (Restricted to Admins & Super Admins)"} 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer relative ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer relative ${
               isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <UserPlus className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+            <UserPlus className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
             {!isAdminOrSuperAdmin && (
-              <Lock className="w-3.5 h-3.5 text-black dark:text-white absolute top-1 right-1" />
+              <Lock className="w-3 h-3 text-black dark:text-white absolute top-1 right-1" />
             )}
           </button>
 
@@ -685,15 +701,15 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
           <button 
             onClick={() => setActiveModal('removeStudent')} 
             title={isAdminOrSuperAdmin ? "Remove Student Record (Admin / Super Admin)" : "Remove Student Record (Restricted to Admins & Super Admins)"} 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer relative ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer relative ${
               isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <UserMinus className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+            <UserMinus className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
             {!isAdminOrSuperAdmin && (
-              <Lock className="w-3.5 h-3.5 text-black dark:text-white absolute top-1 right-1" />
+              <Lock className="w-3 h-3 text-black dark:text-white absolute top-1 right-1" />
             )}
           </button>
 
@@ -701,62 +717,62 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
           <button 
             onClick={() => setActiveModal('theme')} 
             title="Change Theme Palette" 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
               isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <Palette className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+            <Palette className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
           </button>
 
           {/* 8. Term Selection */}
           <button 
             onClick={() => setActiveModal('term')} 
             title="Term Selection (Term 2)" 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
               isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
-            <CalendarDays className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+            <CalendarDays className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
           </button>
 
           {/* 9. Lock / Unlock All */}
           <button 
             onClick={handleLockAll} 
             title={subjects.every(s => s.locked) ? "Unlock All Subjects" : "Lock All Subjects (ECZ Official)"} 
-            className={`w-11 h-11 sm:w-12 sm:h-12 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex shrink-0 items-center justify-center transition-colors cursor-pointer ${
               subjects.every(s => s.locked) 
                 ? 'bg-black text-white dark:bg-white dark:text-black' 
                 : isDarkMode 
                 ? 'text-white hover:bg-slate-700' 
-                : 'text-black hover:bg-slate-100'
+                : 'text-black hover:bg-slate-300/70'
             }`}
           >
             {subjects.every(s => s.locked) ? (
-              <ShieldCheck className="w-6 h-6 md:w-7 md:h-7 text-white dark:text-black stroke-[2.25]" />
+              <ShieldCheck className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white dark:text-black stroke-[2.25]" />
             ) : (
-              <ShieldAlert className="w-6 h-6 md:w-7 md:h-7 text-black dark:text-white stroke-[2.25]" />
+              <ShieldAlert className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-black dark:text-white stroke-[2.25]" />
             )}
           </button>
         </div>
 
-        {/* Sync Marks Button */}
+        {/* Right Side: Top Right Green Button (Same Height as Back Button) */}
         <button
           onClick={handleSync}
           disabled={isSyncing}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-emerald-900/30 cursor-pointer shrink-0 disabled:opacity-80 ml-auto"
+          className="h-9 sm:h-10 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-emerald-900/30 cursor-pointer shrink-0 disabled:opacity-80 active:scale-95"
         >
-          <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Save & Sync Marks'}</span>
+          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+          <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Save & Sync Marks'}</span>
+          <span className="md:hidden">{isSyncing ? 'Syncing...' : 'Sync'}</span>
         </button>
       </div>
-      </div>
 
-      {/* Pronounced & Extended Search Engine Control Section */}
-      <div className={`px-3 md:px-6 py-2.5 border-b shadow-2xs z-40 transition-colors ${
+      {/* Pronounced & Extended Search Engine Control Section - Compact Height */}
+      <div className={`px-3 md:px-5 py-1.5 border-b shadow-2xs z-40 transition-colors shrink-0 ${
         theme === 'dark' 
           ? 'bg-slate-900/90 border-slate-800' 
           : theme === 'emerald' 
@@ -765,44 +781,44 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
           ? 'bg-[#0f172a] border-blue-950' 
           : 'bg-slate-50/90 border-slate-200'
       }`}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2.5">
           {/* Extended Search Input Field with Bold High-Contrast Text & Match Badge */}
-          <div className="flex-1 flex items-center gap-2.5">
-            <div className={`relative flex-1 flex items-center rounded-2xl border-2 transition-all ${
+          <div className="flex-1 flex items-center gap-2">
+            <div className={`relative flex-1 flex items-center rounded-xl border-2 transition-all ${
               searchTerm 
                 ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-white dark:bg-slate-800' 
                 : isDarkMode 
                 ? 'bg-slate-800/90 border-slate-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20' 
                 : 'bg-white border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 shadow-2xs'
             }`}>
-              <Search className="w-5 h-5 ml-3 shrink-0 text-black dark:text-white stroke-[2.25]" />
+              <Search className="w-4 h-4 ml-2.5 shrink-0 text-black dark:text-white stroke-[2.25]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search candidates by Name, ID, or Score (e.g. '85', '>70', '<50')..."
-                className="w-full pl-2.5 pr-8 py-2 text-xs md:text-sm font-black text-black dark:text-white placeholder-slate-400 focus:outline-none bg-transparent"
+                className="w-full pl-2 pr-8 py-1.5 text-xs md:text-sm font-black text-black dark:text-white placeholder-slate-400 focus:outline-none bg-transparent"
               />
               {searchTerm && (
                 <button 
                   onClick={() => setSearchTerm('')} 
-                  className="p-1 mr-2 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+                  className="p-1 mr-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
                   title="Clear Search"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
             {/* Live Search Matches Badge */}
-            <div className={`px-3 py-2 rounded-2xl border font-black text-xs uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-2xs ${
+            <div className={`px-2.5 py-1.5 rounded-xl border font-black text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs ${
               searchTerm
                 ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/40'
                 : isDarkMode
                 ? 'bg-slate-800 text-slate-300 border-slate-700'
                 : 'bg-slate-200/80 text-slate-700 border-slate-300'
             }`}>
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span>{matchingCount} {matchingCount === 1 ? 'Match' : 'Matches'}</span>
             </div>
           </div>
@@ -815,7 +831,7 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
           <thead className="sticky top-0 z-30 shadow-sm">
             <tr className={isDarkMode ? 'bg-slate-800' : 'bg-white'}>
               {/* STICKY NAME HEADER */}
-              <th className={`sticky left-0 z-40 border-b border-r px-4 md:px-8 py-3 md:py-5 text-left w-[130px] sm:w-[220px] md:w-[320px] min-w-[130px] sm:min-w-[220px] md:min-w-[320px] transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <th className={`sticky left-0 z-40 border-b border-r px-3 md:px-5 py-2 md:py-2.5 text-left w-[130px] sm:w-[220px] md:w-[320px] min-w-[130px] sm:min-w-[220px] md:min-w-[320px] transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-[9px] md:text-[11px] font-black uppercase tracking-[0.15em] truncate ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Student</span>
                   <MoreVertical className={`hidden md:block w-4 h-4 ${isDarkMode ? 'text-slate-600' : 'text-slate-300'}`} />
@@ -823,13 +839,13 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
               </th>
               
               {/* STUDENT NUMBER HEADER */}
-              <th className={`border-b border-r px-3 md:px-8 py-3 md:py-5 text-left w-[100px] md:w-[200px] min-w-[100px] md:min-w-[200px] transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <th className={`border-b border-r px-3 md:px-5 py-2 md:py-2.5 text-left w-[100px] md:w-[200px] min-w-[100px] md:min-w-[200px] transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                 <span className={`text-[9px] md:text-[11px] font-black uppercase tracking-[0.15em] truncate ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Student ID</span>
               </th>
 
               {/* SUBJECT HEADERS WITH TEACHERS & LOCKERS */}
               {subjects.map((sub) => (
-                <th key={sub.code} className={`border-b border-r px-2 md:px-4 py-3 md:py-5 w-[100px] md:w-[140px] min-w-[100px] md:min-w-[140px] text-center group transition-colors ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50/50 border-slate-200'}`}>
+                <th key={sub.code} className={`border-b border-r px-2 md:px-3 py-2 md:py-2.5 w-[100px] md:w-[140px] min-w-[100px] md:min-w-[140px] text-center group transition-colors ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50/50 border-slate-200'}`}>
                   <div className="flex flex-col items-center gap-1">
                     <div className="flex items-center gap-2">
                       <span className={`text-xs md:text-sm font-black tracking-tighter ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{sub.code}</span>
@@ -859,15 +875,15 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
             {filteredStudents.map((student, idx) => (
               <tr key={idx} className={`group transition-colors ${isDarkMode ? 'hover:bg-indigo-900/20' : 'hover:bg-indigo-50/30'}`}>
                 {/* STICKY NAME CELL - Slightly enlarged and strictly identical uniform font size */}
-                <td className={`sticky left-0 z-20 border-r px-4 md:px-8 py-3.5 md:py-5 shadow-[4px_0_12px_rgba(0,0,0,0.02)] transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700 group-hover:bg-indigo-900/40' : 'bg-white border-slate-100 group-hover:bg-indigo-50/30'}`}>
+                <td className={`sticky left-0 z-20 border-r px-3 md:px-5 py-2 md:py-2.5 shadow-[4px_0_12px_rgba(0,0,0,0.02)] transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700 group-hover:bg-indigo-900/40' : 'bg-white border-slate-100 group-hover:bg-indigo-50/30'}`}>
                   <div className="flex flex-col justify-center">
-                    <span className={`font-bold text-[15px] md:text-[16px] leading-snug tracking-tight truncate max-w-[130px] sm:max-w-[220px] md:max-w-none ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{student.name}</span>
+                    <span className={`font-bold text-[14px] md:text-[15px] leading-snug tracking-tight truncate max-w-[130px] sm:max-w-[220px] md:max-w-none ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{student.name}</span>
                   </div>
                 </td>
 
                 {/* STUDENT NUMBER CELL */}
-                <td className={`px-3 md:px-8 py-3.5 md:py-5 border-r transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}>
-                  <span className={`font-bold text-[11px] md:text-sm tracking-tight md:tracking-[0.1em] font-mono truncate max-w-[90px] md:max-w-none block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <td className={`px-3 md:px-5 py-2 md:py-2.5 border-r transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}>
+                  <span className={`font-bold text-[11px] md:text-xs tracking-tight md:tracking-[0.08em] font-mono truncate max-w-[90px] md:max-w-none block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     {student.examNo || (student.nrc && /^\d{4}-\d{4}$/.test(student.nrc) ? student.nrc : (student.nrc?.startsWith('2026-') ? student.nrc : `2026-${String(idx + 1).padStart(4, '0')}`))}
                   </span>
                 </td>
@@ -876,12 +892,12 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
                 {subjects.map((sub) => {
                   const isEditable = !sub.locked || isAdminOrSuperAdmin;
                   return (
-                    <td key={sub.code} className={`px-2 md:px-4 py-3.5 md:py-5 border-r text-center transition-colors ${isDarkMode ? 'border-slate-700/50' : 'border-slate-50'}`}>
+                    <td key={sub.code} className={`px-2 md:px-3 py-1.5 md:py-2 border-r text-center transition-colors ${isDarkMode ? 'border-slate-700/50' : 'border-slate-50'}`}>
                       <div 
                         onClick={() => handleCellClick(student.dbId, sub.code, marksMap[student.dbId]?.[sub.code] || '')}
                         title={sub.locked && isAdminOrSuperAdmin ? "Admin Override: Direct Results Editing Enabled" : (sub.locked ? "Subject Locked" : "Click to edit mark")}
-                        className={`inline-flex items-center justify-center w-12 h-9 md:w-14 md:h-10 rounded-lg md:rounded-xl border transition-all ${!isEditable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${selectedCell?.studentId === student.dbId && selectedCell?.subject === sub.code ? 'ring-2 ring-indigo-500 bg-indigo-50/50 text-indigo-700' : isDarkMode ? 'bg-slate-800 border-slate-700 group-hover:border-indigo-500/50 text-slate-300' : 'bg-white border-slate-100 group-hover:border-indigo-200 group-hover:shadow-sm text-slate-700'}`}>
-                        <span className={`font-black text-sm md:text-base ${selectedCell?.studentId === student.dbId && selectedCell?.subject === sub.code ? 'animate-pulse text-indigo-600' : ''}`}>
+                        className={`inline-flex items-center justify-center w-11 h-8 md:w-13 md:h-9 rounded-lg border transition-all ${!isEditable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${selectedCell?.studentId === student.dbId && selectedCell?.subject === sub.code ? 'ring-2 ring-indigo-500 bg-indigo-50/50 text-indigo-700' : isDarkMode ? 'bg-slate-800 border-slate-700 group-hover:border-indigo-500/50 text-slate-300' : 'bg-white border-slate-100 group-hover:border-indigo-200 group-hover:shadow-sm text-slate-700'}`}>
+                        <span className={`font-black text-xs md:text-sm ${selectedCell?.studentId === student.dbId && selectedCell?.subject === sub.code ? 'animate-pulse text-indigo-600' : ''}`}>
                           {selectedCell?.studentId === student.dbId && selectedCell?.subject === sub.code ? tempMarkValue : (marksMap[student.dbId]?.[sub.code] || '-')}
                         </span>
                       </div>
@@ -1264,7 +1280,7 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
                   <textarea 
                      value={pasteData}
                      onChange={(e) => setPasteData(e.target.value)}
-                     placeholder="Paste marks data here (e.g. 'John Doe MATH 85 ENG 90'). AI will automatically extract and map to the ledger."
+                     placeholder="Paste marks data here (e.g. 'John Doe MATH 85 ENG 90'). Data will automatically be extracted and mapped to the ledger."
                      className={`w-full h-32 p-4 rounded-xl text-sm outline-none resize-none ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-700 placeholder-slate-400'} border focus:border-indigo-500 transition-colors`}
                   />
                   <button 
@@ -1286,8 +1302,8 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
                      }}
                      disabled={isParsing || !pasteData}
                      className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
-                    {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    {isParsing ? 'Processing via AI...' : 'Parse & Import'}
+                    {isParsing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                    {isParsing ? 'Processing...' : 'Parse & Import'}
                   </button>
                 </div>
               )}
@@ -1334,7 +1350,7 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
                           onClick={() => setAddStudentMode('paste')}
                           className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${addStudentMode === 'paste' ? 'bg-indigo-600 text-white shadow-xs' : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
                         >
-                          <Sparkles className="w-3.5 h-3.5" /> Quick Paste (Auto-Adjust)
+                          <Zap className="w-3.5 h-3.5" /> Quick Paste (Auto-Adjust)
                         </button>
                       </div>
 
@@ -1374,7 +1390,7 @@ export default function OfficialMarkbook({ onNavigate }: { onNavigate?: (view: s
                                 Paste Roster Names (One per line)
                               </label>
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-                                <Sparkles className="w-3 h-3" /> Auto-Adjustment Active
+                                <Zap className="w-3 h-3" /> Auto-Adjustment Active
                               </span>
                             </div>
                             <textarea

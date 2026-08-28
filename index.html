@@ -4,14 +4,26 @@
     <script>
       window.addEventListener('unhandledrejection', (event) => {
         const msg = event.reason?.message || String(event.reason);
-        if (msg.toLowerCase().includes('database is closing') || msg.toLowerCase().includes('closing/hidden') || msg.toLowerCase().includes('database is hidden')) {
+        if (
+          msg.toLowerCase().includes('database is closing') || 
+          msg.toLowerCase().includes('closing/hidden') || 
+          msg.toLowerCase().includes('database is hidden') ||
+          msg.toLowerCase().includes('cssrules') ||
+          msg.toLowerCase().includes('inlining remote css')
+        ) {
           event.stopImmediatePropagation();
           event.preventDefault();
         }
       }, { capture: true });
       window.addEventListener('error', (event) => {
         const msg = event.message || String(event.error);
-        if (msg.toLowerCase().includes('database is closing') || msg.toLowerCase().includes('closing/hidden') || msg.toLowerCase().includes('database is hidden')) {
+        if (
+          msg.toLowerCase().includes('database is closing') || 
+          msg.toLowerCase().includes('closing/hidden') || 
+          msg.toLowerCase().includes('database is hidden') ||
+          msg.toLowerCase().includes('cssrules') ||
+          msg.toLowerCase().includes('inlining remote css')
+        ) {
           event.stopImmediatePropagation();
           event.preventDefault();
         }

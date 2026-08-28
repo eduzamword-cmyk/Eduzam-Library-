@@ -33,9 +33,11 @@ import {
   Radio,
   PhoneCall,
   MapPin,
-  DownloadCloud
+  DownloadCloud,
+  Square
 } from 'lucide-react';
 import BackgroundManagerModal from './BackgroundManagerModal';
+import SquareLogoManagerModal, { SquarePresetIcon, isUserAdminOrSuperAdmin } from './SquareLogoManagerModal';
 import { backgroundService } from '../lib/backgroundService';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, doc, setDoc, onSnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -119,8 +121,72 @@ export default function SettingsView() {
   const [deadlineNotifications, setDeadlineNotifications] = useState(true);
   const [isBgModalOpen, setIsBgModalOpen] = useState(false);
 
+  // Cover Logo / Emblem State
+  const [coverLogo, setCoverLogo] = useState<string | null>(() => localStorage.getItem('eduzam_cover_logo'));
+  const coverLogoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Selected image exceeds 2MB limit. Please select a smaller image.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const maxDim = 400;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.75);
+          setCoverLogo(compressed);
+          localStorage.setItem('eduzam_cover_logo', compressed);
+          window.dispatchEvent(new CustomEvent('eduzam-cover-logo-updated'));
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleResetCoverLogo = () => {
+    setCoverLogo(null);
+    localStorage.removeItem('eduzam_cover_logo');
+    window.dispatchEvent(new CustomEvent('eduzam-cover-logo-updated'));
+  };
+
+  // School Report Form Square Logo State
+  const [reportLogoUrl, setReportLogoUrl] = useState<string>(() => localStorage.getItem('school_report_logo_url') || 'zm-coat-of-arms-sq');
+  const [isReportLogoModalOpen, setIsReportLogoModalOpen] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(() => isUserAdminOrSuperAdmin());
+
   // Synchronize initial user info and listen to Firestore user_profiles document
   useEffect(() => {
+    setIsAdminUser(isUserAdminOrSuperAdmin());
+
+    const handleLogoUpdate = (e: any) => {
+      if (e.detail?.url) {
+        setReportLogoUrl(e.detail.url);
+      }
+    };
+    window.addEventListener('school-logo-updated', handleLogoUpdate);
+
     if (auth.currentUser) {
       if (auth.currentUser.displayName) setFullName(auth.currentUser.displayName);
       if (auth.currentUser.photoURL) setPortraitUrl(auth.currentUser.photoURL);
@@ -571,6 +637,58 @@ export default function SettingsView() {
                 <p className="text-[11px] text-slate-500">Sets your active institutional jurisdiction and stream (MoE Gazetted)</p>
               </div>
             </div>
+
+            {/* School Report Form Square Logo (Admin & Super Admin) */}
+            <div className="pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase">
+                    Report Form Official Logo (1:1 Square)
+                  </label>
+                  <p className="text-[11px] text-slate-500">
+                    Sovereign / institutional insignia printed on student academic report cards.
+                  </p>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                  Square Insignia
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="w-14 h-14 border border-black p-1 bg-white flex items-center justify-center aspect-square shadow-xs rounded-sm overflow-hidden shrink-0">
+                  {reportLogoUrl && reportLogoUrl.startsWith('data:') ? (
+                    <img 
+                      src={reportLogoUrl} 
+                      alt="Report Logo" 
+                      className="w-full h-full object-contain aspect-square" 
+                    />
+                  ) : (
+                    <SquarePresetIcon type={reportLogoUrl || 'zm-coat-of-arms-sq'} className="w-full h-full text-slate-900" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-1">
+                  <h4 className="text-xs font-bold text-slate-800">
+                    {reportLogoUrl.startsWith('data:') ? 'Custom Uploaded School Logo' : 'Official National Insignia (Square)'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    {isAdminUser 
+                      ? 'Admins and Super Admins can crop and upload any school emblem or select standard presets.'
+                      : 'Managed by School Administrators and Ministry Super Admins.'}
+                  </p>
+                  {isAdminUser && (
+                    <button
+                      type="button"
+                      onClick={() => setIsReportLogoModalOpen(true)}
+                      className="mt-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <Square className="w-3.5 h-3.5 text-teal-400" />
+                      Manage Square Logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </form>
         </div>
 
@@ -674,6 +792,56 @@ export default function SettingsView() {
             >
               <Zap className="w-4 h-4" />
               <span>Open Background Services Console</span>
+            </button>
+          </div>
+
+          {/* COVER LOGO & EMBLEM SETTINGS CARD */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+            <input 
+              ref={coverLogoFileInputRef}
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handleCoverLogoFileSelect}
+            />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center overflow-hidden font-bold border border-blue-100">
+                  {coverLogo ? (
+                    <img src={coverLogo} alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <Building2 className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">Cover Page Logo & Emblem</h3>
+                  <p className="text-xs text-slate-500">Manage first-page institutional crest/logo</p>
+                </div>
+              </div>
+              {coverLogo && (
+                <button
+                  type="button"
+                  onClick={handleResetCoverLogo}
+                  className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  title="Reset to default emblem"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Reset</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Upload a custom institution logo or emblem (Max 2MB) to be displayed on the Eduzam entrance cover screen.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => coverLogoFileInputRef.current?.click()}
+              className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-600/30 cursor-pointer active:scale-95"
+            >
+              <Camera className="w-4 h-4" />
+              <span>Upload Custom Emblem / Logo</span>
             </button>
           </div>
 
@@ -831,6 +999,16 @@ export default function SettingsView() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Admin Square Report Logo Manager Modal */}
+      <SquareLogoManagerModal
+        isOpen={isReportLogoModalOpen}
+        onClose={() => setIsReportLogoModalOpen(false)}
+        currentLogoUrl={reportLogoUrl}
+        onLogoApplied={(appliedUrl) => {
+          setReportLogoUrl(appliedUrl);
+        }}
+      />
     </div>
   );
 }

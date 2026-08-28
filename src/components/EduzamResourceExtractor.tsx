@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles,
+  Zap,
   BookOpen,
   Download,
   FileCheck2,
@@ -22,7 +22,6 @@ import {
   RefreshCw,
   FolderPlus,
   Compass,
-  Zap,
   SlidersHorizontal,
   Flame,
   Award,
@@ -450,7 +449,7 @@ export default function EduzamResourceExtractor({
       isInternational: false,
       featured: true,
       coverImageGradient: 'from-emerald-900 via-teal-900 to-slate-950',
-      description: `AI-Extracted CDC & Ministry of Education CBC teaching resource for ${extractedResult.level} ${extractedResult.subject} on "${topic}".`,
+      description: `Extracted CDC & Ministry of Education CBC teaching resource for ${extractedResult.level} ${extractedResult.subject} on "${topic}".`,
       tableOfContents: pages.map(p => p.pageTitle),
       pagesList: pages
     };
@@ -513,8 +512,8 @@ export default function EduzamResourceExtractor({
           <div className="space-y-2.5 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                EDUZAM 3.7 Curriculum Extractor
+                <Zap className="w-3.5 h-3.5 text-emerald-300" />
+                EDUZAM 3.7 Lesson Plan Extractor
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold">
                 <ShieldCheck className="w-3 h-3 text-blue-300" />
@@ -527,7 +526,7 @@ export default function EduzamResourceExtractor({
             </div>
 
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-              EDUZAM Teaching Resource Extractor
+              EDUZAM Lesson Plan Extractor
             </h2>
 
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
@@ -819,7 +818,7 @@ export default function EduzamResourceExtractor({
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-emerald-300" />
+                  <Zap className="w-4 h-4 text-emerald-300" />
                   <span>Extract Teaching Resource (EDUZAM 3.7)</span>
                 </>
               )}
@@ -877,15 +876,15 @@ export default function EduzamResourceExtractor({
           {isExtracting ? (
             <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 shadow-xs flex flex-col items-center justify-center text-center space-y-5 min-h-[500px]">
               <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
+                <div className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-fuchsia-500 border-r-cyan-400 border-b-violet-500 border-l-amber-400 animate-spin shadow-[0_0_15px_rgba(217,70,239,0.3)]" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Sparkles className="w-7 h-7 text-emerald-600 animate-pulse" />
+                  <Zap className="w-7 h-7 text-fuchsia-500 animate-pulse" />
                 </div>
               </div>
 
               <div className="space-y-2 max-w-md">
                 <h3 className="text-base font-black text-slate-900">
-                  AI Teaching Resource Extractor Active
+                  CDC Lesson Plan Extractor Active
                 </h3>
                 <p className="text-xs font-semibold text-emerald-700">
                   {extractionStage || 'Processing syllabus metadata with EDUZAM 3.7...'}
@@ -1017,7 +1016,7 @@ export default function EduzamResourceExtractor({
           ) : (
             <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 shadow-xs flex flex-col items-center justify-center text-center space-y-4 min-h-[500px]">
               <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-xs">
-                <Sparkles className="w-8 h-8" />
+                <BookOpen className="w-8 h-8" />
               </div>
 
               <div className="space-y-1 max-w-md">

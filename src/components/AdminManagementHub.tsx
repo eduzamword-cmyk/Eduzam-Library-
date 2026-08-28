@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, Shield, Settings, CheckCircle, XCircle, 
   Search, Filter, MoreVertical, ShieldAlert,
-  Save, RefreshCw, Power, AlertTriangle, UserCog
+  Save, RefreshCw, Power, AlertTriangle, UserCog,
+  Square, Image as ImageIcon
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { 
   collection, query, getDocs, updateDoc, doc, 
   onSnapshot, orderBy, serverTimestamp, getDoc, setDoc
 } from 'firebase/firestore';
+import SquareLogoManagerModal, { SquarePresetIcon } from './SquareLogoManagerModal';
 
 interface UserProfile {
   uid: string;
@@ -51,10 +53,37 @@ export default function AdminManagementHub({ initialTab = 'registry' }: { initia
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
+  const [reportLogoUrl, setReportLogoUrl] = useState<string>(() => localStorage.getItem('school_report_logo_url') || 'zm-coat-of-arms-sq');
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    const handleLogoUpdate = (e: any) => {
+      if (e.detail?.url) {
+        setReportLogoUrl(e.detail.url);
+      }
+    };
+    window.addEventListener('school-logo-updated', handleLogoUpdate);
+
+    // Subscribe to school branding
+    const brandingRef = doc(db, 'app_settings', 'school_branding');
+    const unsubscribeBranding = onSnapshot(brandingRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.reportLogoUrl) {
+          setReportLogoUrl(data.reportLogoUrl);
+        }
+      }
+    });
+
+    return () => {
+      window.removeEventListener('school-logo-updated', handleLogoUpdate);
+      unsubscribeBranding();
+    };
+  }, []);
 
   useEffect(() => {
     // Subscribe to users
@@ -321,6 +350,52 @@ export default function AdminManagementHub({ initialTab = 'registry' }: { initia
                       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.registrationEnabled ? 'right-1' : 'left-1'}`} />
                     </button>
                   </div>
+
+                  {/* Report Form Square Logo Management */}
+                  <div className="p-4 bg-teal-50/40 rounded-xl border border-teal-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                          <Square className="w-4 h-4 text-teal-600" />
+                          Official Report Form Logo (1:1 Square)
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          Sovereign & institutional crest rendered on academic report cards
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                        Admin Only
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="w-12 h-12 border border-black p-0.5 bg-white flex items-center justify-center aspect-square shadow-2xs rounded-sm overflow-hidden shrink-0">
+                        {reportLogoUrl && reportLogoUrl.startsWith('data:') ? (
+                          <img 
+                            src={reportLogoUrl} 
+                            alt="Current Square Logo" 
+                            className="w-full h-full object-contain aspect-square" 
+                          />
+                        ) : (
+                          <SquarePresetIcon type={reportLogoUrl || 'zm-coat-of-arms-sq'} className="w-full h-full text-slate-900" />
+                        )}
+                      </div>
+
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-slate-700">
+                          {reportLogoUrl.startsWith('data:') ? 'Custom Uploaded Logo (Active)' : 'National Coat of Arms (Default)'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setIsLogoModalOpen(true)}
+                          className="mt-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                        >
+                          <Square className="w-3.5 h-3.5 text-teal-400" />
+                          Manage & Crop Square Logo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -354,6 +429,16 @@ export default function AdminManagementHub({ initialTab = 'registry' }: { initia
           )}
         </div>
       </div>
+
+      {/* Admin Square Logo Manager Modal */}
+      <SquareLogoManagerModal
+        isOpen={isLogoModalOpen}
+        onClose={() => setIsLogoModalOpen(false)}
+        currentLogoUrl={reportLogoUrl}
+        onLogoApplied={(appliedUrl) => {
+          setReportLogoUrl(appliedUrl);
+        }}
+      />
     </div>
   );
 }

@@ -83,14 +83,22 @@ export default function StaffroomLoading({ onComplete, title, subtitle }: Staffr
   const dotCount = 12;
   const radius = 38; // Radius of the dot circle in px
 
+  // Color combination: Red, Orange, Blue, Green
+  const dotColors = [
+    { bg: 'bg-red-500', shadow: 'shadow-red-500/70', hex: '#ef4444' },
+    { bg: 'bg-orange-500', shadow: 'shadow-orange-500/70', hex: '#f97316' },
+    { bg: 'bg-blue-500', shadow: 'shadow-blue-500/70', hex: '#3b82f6' },
+    { bg: 'bg-emerald-500', shadow: 'shadow-emerald-500/70', hex: '#10b981' },
+  ];
+
   return (
-    <div className="fixed inset-0 z-[100] w-screen h-screen bg-white/70 flex flex-col justify-center items-center p-0 m-0 overflow-hidden select-none backdrop-blur-md font-google-sans">
+    <div className="fixed inset-0 z-[100] w-screen h-screen bg-slate-300/80 flex flex-col justify-center items-center p-0 m-0 overflow-hidden select-none backdrop-blur-md font-google-sans">
       
-      {/* Soft Ambient Radial Background Glow */}
+      {/* Soft Ambient Radial Background Glow - 40% Darkened */}
       <div 
         className="absolute inset-0 w-full h-full pointer-events-none z-0"
         style={{
-          background: 'radial-gradient(circle at 50% 50%, rgba(241, 245, 249, 0.9) 0%, rgba(255, 255, 255, 0.4) 100%)'
+          background: 'radial-gradient(circle at 50% 50%, rgba(148, 163, 184, 0.95) 0%, rgba(203, 213, 225, 0.75) 100%)'
         }}
       />
       
@@ -111,13 +119,14 @@ export default function StaffroomLoading({ onComplete, title, subtitle }: Staffr
             const angle = (idx / dotCount) * 2 * Math.PI;
             const x = radius * Math.cos(angle);
             const y = radius * Math.sin(angle);
+            const color = dotColors[idx % dotColors.length];
 
             return (
               <motion.div
                 key={idx}
                 animate={{
-                  scale: [0.65, 1.35, 0.65],
-                  opacity: [0.2, 1, 0.2],
+                  scale: [0.65, 1.4, 0.65],
+                  opacity: [0.35, 1, 0.35],
                 }}
                 transition={{
                   repeat: Infinity,
@@ -125,10 +134,10 @@ export default function StaffroomLoading({ onComplete, title, subtitle }: Staffr
                   delay: (idx / dotCount) * 1.1,
                   ease: "easeInOut"
                 }}
-                className="absolute w-2.5 h-2.5 rounded-full bg-slate-900 shadow-2xs"
+                className={`absolute w-3 h-3 rounded-full ${color.bg} ${color.shadow} shadow-md`}
                 style={{
-                  left: `calc(50% + ${x}px - 5px)`,
-                  top: `calc(50% + ${y}px - 5px)`
+                  left: `calc(50% + ${x}px - 6px)`,
+                  top: `calc(50% + ${y}px - 6px)`
                 }}
               />
             );

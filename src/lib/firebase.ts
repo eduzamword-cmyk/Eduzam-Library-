@@ -44,17 +44,8 @@ interface FirestoreErrorInfo {
 
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Analytics safely (supported in browser environments)
-export let analytics: ReturnType<typeof getAnalytics> | null = null;
-if (typeof window !== 'undefined') {
-  isSupported().then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-    }
-  }).catch(() => {
-    // Non-blocking catch if analytics is restricted by browser privacy/iframe
-  });
-}
+// Firebase Analytics is disabled to prevent unhandled fetch errors in the iframe environment.
+export let analytics: any = null;
 
 // Suppress benign Firebase dev-mode unhandled rejections for IndexedDB
 if (typeof window !== 'undefined') {

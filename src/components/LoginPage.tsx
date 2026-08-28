@@ -10,7 +10,8 @@ import {
   createUserWithEmailAndPassword, 
   signInWithPopup, 
   GoogleAuthProvider,
-  signOut
+  signOut,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -93,7 +94,6 @@ export const ZAMBIA_INSTITUTIONS_GROUPED = [
     schools: [
       'Chipembi Girls Secondary School',
       'Serenje Boys Secondary School',
-      'Mupepetwe Secondary School',
       'Mukobeko Secondary School',
       'Kabwe High School',
       'Bwacha Secondary School',
@@ -226,8 +226,8 @@ export default function LoginPage({ onComplete, onBackToLanding }: LoginPageProp
   };
 
   // Sign In State
-  const [email, setEmail] = useState(() => localStorage.getItem('user_email') || 'chikwandab2@gmail.com');
-  const [password, setPassword] = useState('eduzam2026pass');
+  const [email, setEmail] = useState(() => localStorage.getItem('user_email') || '');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginCategory, setLoginCategory] = useState(getInitialCategory);
   const [loginInstitution, setLoginInstitution] = useState(getInitialSchool);
@@ -250,6 +250,32 @@ export default function LoginPage({ onComplete, onBackToLanding }: LoginPageProp
   const [isManualInstitution, setIsManualInstitution] = useState(false);
   const [manualInstitutionName, setManualInstitutionName] = useState('');
   const [agreedTerms, setAgreedTerms] = useState(false);
+
+  // Forgot Password Modal State
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState('');
+  const [forgotError, setForgotError] = useState('');
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      setForgotError('Please enter your registered email address.');
+      return;
+    }
+    setForgotLoading(true);
+    setForgotError('');
+    setForgotSuccess('');
+    try {
+      await sendPasswordResetEmail(auth, forgotEmail.trim());
+      setForgotSuccess('Password reset link successfully sent to your email. Please check your inbox.');
+    } catch (err: any) {
+      setForgotError(err.message || 'Failed to send password reset email. Please verify your email.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   // Sync login selector with localStorage whenever mode changes
   useEffect(() => {
@@ -296,15 +322,25 @@ export default function LoginPage({ onComplete, onBackToLanding }: LoginPageProp
 
         if (userDoc.exists()) {
           const data = userDoc.data();
-          role = data.role;
-          name = data.fullName;
-          approved = data.approved;
-          const finalInst = chosenInstitution || data.institution || 'Munali Boys Secondary School';
+          role = data.role || 'TEACHER';
+          name = data.fullName || result.user.displayName || 'Official Administrator';
+          approved = data.approved || false;
+          
+          if (role !== 'SUPER_ADMIN') {
+            if (data.institution && data.institution.toLowerCase() !== chosenInstitution.toLowerCase()) {
+              await signOut(auth);
+              throw new Error(`Institution mismatch. You are registered under "${data.institution}". Please select your correct school.`);
+            }
+          }
+          
+          const finalInst = role === 'SUPER_ADMIN' ? chosenInstitution : (data.institution || chosenInstitution);
           localStorage.setItem('user_institution', finalInst);
-          await setDoc(userDocRef, {
-            institution: finalInst,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
+          
+          const updates: any = { updatedAt: serverTimestamp() };
+          if (!data.institution && role !== 'SUPER_ADMIN') {
+             updates.institution = finalInst;
+          }
+          await setDoc(userDocRef, updates, { merge: true });
         } else {
           // Create new profile for Google users
           role = result.user.email === 'eduzamword@gmail.com' ? 'SUPER_ADMIN' : 'TEACHER'; 
@@ -411,15 +447,27 @@ export default function LoginPage({ onComplete, onBackToLanding }: LoginPageProp
         
         if (userDoc.exists()) {
           const data = userDoc.data();
-          localStorage.setItem('user_role', data.role);
+          const role = data.role || 'TEACHER';
+          
+          if (role !== 'SUPER_ADMIN') {
+            if (data.institution && data.institution.toLowerCase() !== chosenInstitution.toLowerCase()) {
+              await signOut(auth);
+              throw new Error(`Institution mismatch. You are registered under "${data.institution}". Please select your correct school.`);
+            }
+          }
+          
+          localStorage.setItem('user_role', role);
           localStorage.setItem('user_name', data.fullName);
           localStorage.setItem('account_approved', String(data.approved));
-          const finalInst = chosenInstitution || data.institution || 'Munali Boys Secondary School';
+          
+          const finalInst = role === 'SUPER_ADMIN' ? chosenInstitution : (data.institution || chosenInstitution);
           localStorage.setItem('user_institution', finalInst);
-          await setDoc(userDocRef, {
-            institution: finalInst,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
+          
+          const updates: any = { updatedAt: serverTimestamp() };
+          if (!data.institution && role !== 'SUPER_ADMIN') {
+             updates.institution = finalInst;
+          }
+          await setDoc(userDocRef, updates, { merge: true });
         } else {
           // Fallback if doc missing
           const isSuperAdmin = cleanEmail === 'eduzamword@gmail.com';
@@ -726,7 +774,17 @@ export default function LoginPage({ onComplete, onBackToLanding }: LoginPageProp
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
                     SECRET KEY / PASSWORD
                   </label>
-                  <a href="#" onClick={(e) => { e.preventDefault(); alert('Password recovery link sent to your registered MOE email.'); }} className="text-xs font-bold text-teal-700 hover:underline">
+                  <a 
+                    href="#" 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      setForgotEmail(email); 
+                      setForgotSuccess(''); 
+                      setForgotError(''); 
+                      setShowForgotPasswordModal(true); 
+                    }} 
+                    className="text-xs font-bold text-teal-700 hover:underline cursor-pointer"
+                  >
                     Forgot Key?
                   </a>
                 </div>
@@ -1048,6 +1106,99 @@ export default function LoginPage({ onComplete, onBackToLanding }: LoginPageProp
           </button>
         )}
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 border border-slate-200 relative"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Reset Password</h3>
+                  <p className="text-xs text-slate-500">Ministry of Education Portal Recovery</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {forgotSuccess ? (
+              <div className="space-y-4 py-4 text-center">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-bold text-slate-800">{forgotSuccess}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPasswordModal(false)}
+                  className="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-md"
+                >
+                  Return to Sign In
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Enter your registered official email address. We will send you a secure Firebase password reset link to update your secret key.
+                </p>
+
+                {forgotError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{forgotError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
+                    Official Email Address
+                  </label>
+                  <div className="relative flex items-center">
+                    <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none" />
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="name@moe.gov.zm"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-teal-600"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(false)}
+                    className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="px-6 py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {forgotLoading ? 'Sending Link...' : 'Send Reset Link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

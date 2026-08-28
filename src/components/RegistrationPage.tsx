@@ -10,8 +10,8 @@ interface RegistrationPageProps {
 }
 
 export default function RegistrationPage({ onComplete }: RegistrationPageProps) {
-  const [email, setEmail] = useState('chikwandab2@gmail.com');
-  const [password, setPassword] = useState('eduzam2026pass');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [institution, setInstitution] = useState(() => localStorage.getItem('user_institution') || 'Munali Boys Secondary School');
   const [isManualInst, setIsManualInst] = useState(false);
   const [manualInstName, setManualInstName] = useState('');

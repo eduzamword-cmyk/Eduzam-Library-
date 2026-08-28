@@ -249,7 +249,6 @@ export default function NavigationDrawer({ currentView, onNavigate, onClose, onS
     { id: 'timetable', label: 'Timetable', icon: Clock, type: 'chevron' },
     { id: 'results', label: 'Results', icon: BarChart3, type: 'chevron' },
     { id: 'sba', label: 'SBA (School Assessments)', icon: BookCheck, type: 'chevron' },
-    { id: 'report-forms', label: 'Official Report Forms', icon: FileCheck2, type: 'chevron' },
     { id: 'curriculum', label: 'Library', icon: BookOpen, type: 'external' },
     { id: 'institutions', label: 'Institution Directory', icon: Building2, type: 'chevron' },
     { id: 'markbook', label: 'Official Markbook', icon: FileText, type: 'chevron' },

@@ -79,15 +79,63 @@
     },
     "AppSettings": {
       "title": "App Settings",
-      "description": "Global application controls and configuration.",
+      "description": "Global application controls, school branding, and configuration.",
       "type": "object",
       "properties": {
         "maintenanceMode": { "type": "boolean" },
         "registrationEnabled": { "type": "boolean" },
+        "reportLogoUrl": { "type": "string" },
+        "reportLogoName": { "type": "string" },
+        "reportLogoType": { "type": "string" },
+        "isSquareLogo": { "type": "boolean" },
+        "schoolName": { "type": "string" },
         "version": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "updatedBy": { "type": "string" }
       }
+    },
+    "SbaRecord": {
+      "title": "SBA Assessment Record",
+      "description": "School-Based Assessment (SBA) tasks, scores, and moderation logs.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string", "maxLength": 100 },
+        "nrc": { "type": "string", "maxLength": 50 },
+        "className": { "type": "string", "maxLength": 100 },
+        "subject": { "type": "string", "maxLength": 100 },
+        "subjectCode": { "type": "string", "maxLength": 50 },
+        "task1Project": { "type": "number" },
+        "task2Practical": { "type": "number" },
+        "task3Test": { "type": "number" },
+        "weightedSbaScore": { "type": "number" },
+        "moderationStatus": { "type": "string", "enum": ["Verified by MOE", "DEBS Approved", "Pending Audit"] },
+        "recordedBy": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["studentId", "studentName", "nrc", "className", "subject", "subjectCode", "weightedSbaScore", "moderationStatus", "recordedBy"]
+    },
+    "StudentResult": {
+      "title": "ECZ Student National Result Record",
+      "description": "Formally recorded candidate marks for paper components, total, grade, and series details.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string", "maxLength": 100 },
+        "studentNumber": { "type": "string", "maxLength": 100 },
+        "nrc": { "type": "string", "maxLength": 50 },
+        "className": { "type": "string", "maxLength": 100 },
+        "subject": { "type": "string", "maxLength": 100 },
+        "subjectCode": { "type": "string", "maxLength": 50 },
+        "paper1": { "type": "number" },
+        "paper2": { "type": "number" },
+        "sbaScore": { "type": "number" },
+        "totalMark": { "type": "number" },
+        "eczGrade": { "type": "string", "maxLength": 20 },
+        "examSeries": { "type": "string", "maxLength": 200 },
+        "dateRecorded": { "type": "string", "maxLength": 50 },
+        "recordedBy": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["studentId", "studentName", "className", "subject", "subjectCode", "paper1", "paper2", "sbaScore", "totalMark", "eczGrade", "examSeries", "recordedBy"]
     }
   },
   "firestore": {
@@ -110,6 +158,14 @@
     "/app_settings/{settingsId}": {
       "schema": "AppSettings",
       "description": "Global application settings."
+    },
+    "/sba_records/{sbaId}": {
+      "schema": "SbaRecord",
+      "description": "School-Based Assessment (SBA) moderation data."
+    },
+    "/student_results/{resultId}": {
+      "schema": "StudentResult",
+      "description": "ECZ Examination series results data."
     }
   }
 }

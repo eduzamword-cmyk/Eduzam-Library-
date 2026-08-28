@@ -13,7 +13,7 @@ import {
   Trash2,
   Volume2,
   VolumeX,
-  Sparkles,
+  Zap,
   RotateCcw,
   Sliders,
   X,
@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import ThreeDashesIcon from './ThreeDashesIcon';
 import MetallicGoldenStar from './MetallicGoldenStar';
+import EduzamBotIcon from './EduzamBotIcon';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, query, onSnapshot, orderBy, limit } from 'firebase/firestore';
 
@@ -201,18 +202,29 @@ const getGreeting = () => {
 
 export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardViewProps) {
   const [queryText, setQueryText] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome-1',
-      sender: 'robot',
-      salutation: undefined,
-      text: 'I am connected to national academic portals. How can I assist you this productive day?',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('dashboard_ai_messages');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Failed to parse dashboard_ai_messages', e);
+      }
     }
-  ]);
+    return [
+      {
+        id: 'welcome-1',
+        sender: 'robot',
+        salutation: undefined,
+        text: 'I am connected to national academic portals. How can I assist you this productive day?',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+  });
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isInputCollapsed, setIsInputCollapsed] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
+  const [attachedFile, setAttachedFile] = useState<{name: string, size: string, type: string} | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [selectedMode] = useState<'general' | 'ecz' | 'cdc'>('general');
   const [latestNotice, setLatestNotice] = useState<any | null>(null);
@@ -246,6 +258,11 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
   const chatEndRef = useRef<HTMLDivElement>(null);
   const toolsMenuRef = useRef<HTMLDivElement>(null);
 
+  // Persist messages across sessions
+  useEffect(() => {
+    localStorage.setItem('dashboard_ai_messages', JSON.stringify(messages));
+  }, [messages]);
+
   // Web Audio Synthesizer for Robot Typing Sound
   const playTypingClick = (volume = 0.4) => {
     if (isAudioMuted || !isTypingSoundEnabled) return;
@@ -256,18 +273,19 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(750 + Math.random() * 300, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.025);
+      // Modern fast high-tech sound
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1400 + Math.random() * 400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.015);
 
-      gain.gain.setValueAtTime(volume * 0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.025);
+      gain.gain.setValueAtTime(volume * 0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.015);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start();
-      osc.stop(ctx.currentTime + 0.03);
+      osc.stop(ctx.currentTime + 0.02);
     } catch (e) {
       // AudioContext unavailable or autoplay blocked
     }
@@ -366,7 +384,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
 
   const handleQuerySubmit = async (promptOverride?: string) => {
     const activeQuery = promptOverride || queryText;
-    if (!activeQuery.trim() && !attachedFileName) return;
+    if (!activeQuery.trim() && !attachedFile) return;
 
     const userMsgId = 'usr-' + Date.now();
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -376,7 +394,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
       sender: 'user',
       text: activeQuery,
       timestamp: timeStr,
-      attachment: attachedFileName || undefined
+      attachment: attachedFile ? attachedFile.name : undefined
     };
 
     setMessages(prev => [...prev, newUserMessage]);
@@ -388,7 +406,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
     ].slice(0, 25));
 
     setQueryText('');
-    setAttachedFileName(null);
+    setAttachedFile(null);
     setIsAiLoading(true);
 
     try {
@@ -401,7 +419,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
           body: JSON.stringify({
             prompt: activeQuery,
             mode: selectedMode,
-            attachment: attachedFileName || undefined
+            attachment: attachedFile || undefined
           })
         });
 
@@ -427,7 +445,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
         } else if (q.includes('school') || q.includes('register') || q.includes('institution')) {
           robotReply = `**National Institutional Verification Registry**\n\n• **Accredited Institutions:** 8,940 public, grant-aided, and certified private learning institutions verified.\n• **EMIS Code Verification:** All school credentials linked directly to provincial education directorate oversight portals.`;
         } else {
-          robotReply = `**EDUZAM Super Administrator AI Command Report**\n\n• **Query Analysis:** Processed command "${activeQuery}".\n• **Operational Status:** Live telemetry connected across all 10 Provincial Education Offices (PEO) and District Education Boards (DEBS).\n• **Data Integrity:** National Markbook records, ECZ candidate rosters, and CDC curricula repositories are fully synchronized.`;
+          robotReply = `**EDUZAM Super Administrator Executive Command Report**\n\n• **Query Analysis:** Processed command "${activeQuery}".\n• **Operational Status:** Live telemetry connected across all 10 Provincial Education Offices (PEO) and District Education Boards (DEBS).\n• **Data Integrity:** National Markbook records, ECZ candidate rosters, and CDC curricula repositories are fully synchronized.`;
         }
       }
 
@@ -440,6 +458,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
+      setIsInputCollapsed(true);
     } catch (err: any) {
       setMessages(prev => [
         ...prev,
@@ -450,6 +469,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
+      setIsInputCollapsed(true);
     } finally {
       setIsAiLoading(false);
     }
@@ -594,8 +614,8 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                 {/* Header title */}
                 <div className="px-3 py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-600" />
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">Robot Tools & Alerts</span>
+                    <Zap className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-900">System Controls & Alerts</span>
                   </div>
                   <span className="text-[10px] font-bold text-slate-400">Controls</span>
                 </div>
@@ -788,7 +808,7 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
                       onClick={() => playTypingClick(soundVolume)}
                       className="w-full py-1.5 bg-white hover:bg-teal-100 border border-teal-200 rounded-lg text-xs font-bold text-teal-800 transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <Sparkles className="w-3 h-3 text-teal-600" />
+                      <Volume2 className="w-3 h-3 text-teal-600" />
                       <span>Test Sound Synth</span>
                     </button>
                   </div>
@@ -848,6 +868,22 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Animated Eduzam Bot Feature - Detached from Communication Box */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+          className="relative z-20 flex justify-center w-full mb-4"
+        >
+          <button
+            onClick={() => setIsInputCollapsed(false)}
+            className="focus:outline-none hover:scale-105 active:scale-95 transition-all cursor-pointer p-1 rounded-full"
+            title="Open Eduzam Bot Input"
+          >
+            <EduzamBotIcon className="w-16 h-16 text-emerald-950 drop-shadow-sm" />
+          </button>
+        </motion.div>
 
         {/* Interactive Communication Box - Extended Upwards */}
         <div className="w-full relative min-h-[380px] sm:min-h-[440px] h-[60vh] sm:h-[66vh] max-h-[74vh] sm:max-h-[78vh] flex flex-col transition-[height,max-height] duration-500 ease-out">
@@ -963,13 +999,13 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
               {isAiLoading && (
                 <div className="flex items-center justify-start gap-2.5 py-2 text-slate-600">
                   <div className="relative w-4 h-4">
-                    <div className="w-full h-full rounded-full border-[1.5px] border-slate-200" />
-                    <div className="absolute inset-0 rounded-full border-[1.5px] border-transparent border-t-cyan-500 border-r-emerald-500 border-b-amber-500 border-l-sky-500 animate-spin" />
+                    <div className="w-full h-full rounded-full border-[2px] border-slate-100" />
+                    <div className="absolute inset-0 rounded-full border-[2px] border-transparent border-t-fuchsia-500 border-r-cyan-400 border-b-violet-500 border-l-amber-400 animate-spin shadow-[0_0_10px_rgba(217,70,239,0.5)]" />
                   </div>
                   <span className="text-xs font-semibold text-slate-600 tracking-wide flex items-center gap-1.5">
                     Responding in real time...
                     {isTypingSoundEnabled && !isAudioMuted && (
-                      <Radio className="w-3 h-3 text-indigo-500 animate-pulse" />
+                      <Radio className="w-3 h-3 text-fuchsia-500 animate-pulse" />
                     )}
                   </span>
                 </div>
@@ -979,92 +1015,114 @@ export default function DashboardView({ onNavigate, onOpenDrawer }: DashboardVie
             </div>
 
             {/* Integrated Search, File Upload, Mic & Send Message Controls Bar */}
-            <div className="border-t border-slate-200 bg-slate-50 focus-within:bg-white transition-colors shrink-0">
-              {attachedFileName && (
-                <div className="px-4 pt-3 pb-1 flex">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200/90 text-emerald-800 rounded-lg text-xs font-bold animate-fadeIn">
-                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="truncate max-w-[200px]">{attachedFileName}</span>
-                    <button type="button" onClick={() => setAttachedFileName(null)} className="ml-1 text-emerald-600 hover:text-emerald-900 font-bold p-0.5 rounded-full hover:bg-emerald-100">
-                      <X className="w-3 h-3" />
+            {isInputCollapsed ? (
+              <div 
+                onClick={() => setIsInputCollapsed(false)}
+                className="border-t border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors py-3 px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 cursor-pointer text-slate-500 hover:text-slate-800"
+                title="Click to write message"
+              >
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                  <MessageSquare className="w-4 h-4 text-indigo-600 animate-pulse" />
+                  <span>Ask Eduzam Bot...</span>
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-1 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-full text-xs font-bold shadow-2xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                  <span>Type message</span>
+                </button>
+              </div>
+            ) : (
+              <div className="border-t border-slate-200 bg-slate-50 focus-within:bg-white transition-colors shrink-0">
+                {attachedFile && (
+                  <div className="px-4 pt-3 pb-1 flex">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200/90 text-emerald-800 rounded-lg text-xs font-bold animate-fadeIn">
+                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="truncate max-w-[200px]">{attachedFile.name} ({attachedFile.size})</span>
+                      <button type="button" onClick={() => setAttachedFile(null)} className="ml-1 text-emerald-600 hover:text-emerald-900 font-bold p-0.5 rounded-full hover:bg-emerald-100">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleQuerySubmit();
+                  }}
+                  className="w-full flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-3.5"
+                >
+                  {/* Text Input Field on Top */}
+                  <textarea
+                    value={queryText}
+                    onChange={(e) => {
+                      setQueryText(e.target.value);
+                      if (isTypingSoundEnabled && !isAudioMuted && e.target.value.length % 3 === 0) {
+                        playTypingClick(soundVolume * 0.7);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleQuerySubmit();
+                      }
+                    }}
+                    placeholder={isListening ? "Listening... Speak your command..." : "Type a message..."}
+                    className="w-full bg-transparent px-2 text-sm font-semibold text-slate-950 placeholder:text-slate-400 focus:outline-none resize-none min-h-[60px]"
+                    rows={2}
+                  />
+
+                  {/* 3 Icons aligned in a straight line on the right side */}
+                  <div className="flex items-center justify-end gap-2.5 w-full">
+                    <label 
+                      className="w-9 h-9 rounded-full bg-slate-100 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 text-slate-500 hover:text-indigo-600 flex items-center justify-center transition-all cursor-pointer relative group"
+                      title="Attach Any File Format/Size"
+                    >
+                      <Paperclip className="w-4.5 h-4.5 group-hover:scale-110 transition-transform stroke-[2]" />
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            const file = e.target.files[0];
+                            const size = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                            setAttachedFile({ name: file.name, size, type: file.type || 'Unknown Format' });
+                          }
+                        }}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={toggleMicListening}
+                      className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all cursor-pointer relative ${
+                        isListening 
+                          ? 'bg-rose-500 border-rose-600 text-white animate-pulse shadow-md shadow-rose-500/20' 
+                          : 'bg-slate-100 border-transparent text-slate-500 hover:bg-slate-200 hover:text-slate-800'
+                      }`}
+                      title={isListening ? "Stop Voice Dictation" : "Voice Dictation"}
+                    >
+                      {isListening ? (
+                        <MicOff className="w-4.5 h-4.5 animate-bounce stroke-[2.5]" />
+                      ) : (
+                        <Mic className="w-4.5 h-4.5 hover:scale-110 transition-transform stroke-[2]" />
+                      )}
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={isAiLoading || (!queryText.trim() && !attachedFile)}
+                      className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 active:scale-95 text-white flex items-center justify-center transition-all shadow-md shadow-blue-600/30 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer group"
+                      title="Send Message"
+                    >
+                      <Send className="w-4 h-4 stroke-[2] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </button>
                   </div>
-                </div>
-              )}
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleQuerySubmit();
-                }}
-                className="w-full flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-3.5"
-              >
-                {/* Text Input Field on Top */}
-                <textarea
-                  value={queryText}
-                  onChange={(e) => {
-                    setQueryText(e.target.value);
-                    if (isTypingSoundEnabled && !isAudioMuted && e.target.value.length % 3 === 0) {
-                      playTypingClick(soundVolume * 0.7);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleQuerySubmit();
-                    }
-                  }}
-                  placeholder={isListening ? "Listening... Speak your command..." : "Type a message..."}
-                  className="w-full bg-transparent px-2 text-sm font-semibold text-slate-950 placeholder:text-slate-400 focus:outline-none resize-none min-h-[60px]"
-                  rows={2}
-                />
-
-                {/* 3 Icons aligned in a straight line on the right side */}
-                <div className="flex items-center justify-end gap-2 w-full">
-                  <label 
-                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300 text-slate-600 hover:text-blue-700 flex items-center justify-center transition-all cursor-pointer relative group"
-                    title="Add files or attach documents"
-                  >
-                    <Plus className="w-4 h-4 group-hover:scale-110 transition-transform stroke-[2]" />
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setAttachedFileName(e.target.files[0].name);
-                        }
-                      }}
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={toggleMicListening}
-                    className={`w-8 h-8 rounded-lg border shadow-sm flex items-center justify-center transition-all cursor-pointer relative ${
-                      isListening 
-                        ? 'bg-rose-500 border-rose-600 text-white animate-pulse' 
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 hover:text-blue-700'
-                    }`}
-                    title={isListening ? "Stop Voice Input" : "Voice Input (Mic)"}
-                  >
-                    {isListening ? (
-                      <MicOff className="w-4 h-4 animate-bounce stroke-[2]" />
-                    ) : (
-                      <Mic className="w-4 h-4 hover:scale-110 transition-transform stroke-[2]" />
-                    )}
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isAiLoading || (!queryText.trim() && !attachedFileName)}
-                    className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 border border-blue-700 active:scale-95 text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed shrink-0 cursor-pointer group"
-                    title="Send Message"
-                  >
-                    <ArrowUp className="w-4 h-4 stroke-[2.5] group-hover:-translate-y-0.5 transition-transform" />
-                  </button>
-                </div>
-              </form>
-            </div>
+                </form>
+              </div>
+            )}
           </motion.div>
         </div>
 

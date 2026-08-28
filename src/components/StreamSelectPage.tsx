@@ -32,12 +32,9 @@ export default function StreamSelectPage({ onSelectStream }: StreamSelectPagePro
           Select Educational Stream
         </h1>
 
-        {/* Gold Graduation Cap Emblem Divider */}
+        {/* Gold Emblem Divider */}
         <div className="flex items-center justify-center gap-4 my-2">
           <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-teal-500/60"></div>
-          <div className="w-8 h-8 rounded-full bg-teal-500/10 border border-teal-500/30 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-teal-700" />
-          </div>
           <div className="h-[1px] w-20 bg-gradient-to-l from-transparent to-teal-500/60"></div>
         </div>
 

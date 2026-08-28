@@ -12,7 +12,8 @@ import {
   Trash2,
   Maximize2,
   Mic,
-  Reply
+  Reply,
+  Sparkles
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import {
@@ -63,7 +64,7 @@ interface MentionUser {
 }
 
 const SYSTEM_PARTICIPANTS: MentionUser[] = [
-  { id: 'ai', name: 'EduZAM Assistant', role: 'Ministry Policy & ECZ AI', isBot: true },
+  { id: 'ai', name: 'EduZAM Assistant', role: 'Ministry Policy & ECZ Desk', isBot: true },
   { id: 'admin', name: 'Super Admin', role: 'Permanent Secretary Desk' },
   { id: 'curriculum', name: 'Dr. L. Phiri', role: 'Director CDC Curriculum' },
   { id: 'exams', name: 'Mr. B. Banda', role: 'ECZ Assessment Director' },
@@ -477,6 +478,29 @@ export default function PrivateChat({ targetUserId, onNavigate }: PrivateChatPro
         <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
       </div>
 
+      {/* 2geminis3.7 Animated Badge */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+        className="absolute top-2 left-1/2 -translate-x-1/2 z-40 pointer-events-auto"
+      >
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-900 to-indigo-900 rounded-full border border-blue-700/50 shadow-[0_8px_20px_-4px_rgba(59,130,246,0.4)] backdrop-blur-md">
+          <div className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-emerald-300"></span>
+          </div>
+          <span className="text-[10px] font-black tracking-widest uppercase text-white drop-shadow-sm flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-blue-300" />
+            2geminis3.7
+          </span>
+          <div className="h-3 w-px bg-blue-700/50 mx-1"></div>
+          <span className="text-[9px] font-bold text-blue-200 hidden sm:inline-block tracking-wide uppercase">
+            Perfect Real-Time Response
+          </span>
+        </div>
+      </motion.div>
+
       {/* Top Header */}
       <div className="absolute top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between z-30 shadow-xs">
         <div className="flex items-center gap-3">
@@ -508,7 +532,7 @@ export default function PrivateChat({ targetUserId, onNavigate }: PrivateChatPro
                 <h2 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition-colors leading-tight">{targetUser.name}</h2>
                 {targetUser.isBot && (
                   <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[9px] font-black uppercase tracking-wider border border-indigo-200">
-                    AI Bot
+                    Assistant
                   </span>
                 )}
               </div>

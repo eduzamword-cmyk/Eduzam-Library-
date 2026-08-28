@@ -20,7 +20,7 @@ import {
   Award,
   FileCheck,
   Star,
-  Bot,
+  Compass,
   User,
   Users,
   Reply,
@@ -38,10 +38,13 @@ import {
   Paperclip,
   Clock,
   Sparkle,
-  Plus
+  Plus,
+  ArrowUp,
+  MessageSquare
 } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { ContactsTicker } from './ContactsTicker';
+import EduzamBotIcon from './EduzamBotIcon';
 import {
   collection,
   query,
@@ -86,12 +89,20 @@ interface MentionUser {
 }
 
 const SYSTEM_PARTICIPANTS: MentionUser[] = [
-  { id: 'ai', name: 'EduZAM Assistant', role: 'Ministry Policy & ECZ AI', isBot: true },
-  { id: 'admin', name: 'Super Admin', role: 'Permanent Secretary Desk' },
-  { id: 'curriculum', name: 'Dr. L. Phiri', role: 'Director CDC Curriculum' },
-  { id: 'exams', name: 'Mr. B. Banda', role: 'ECZ Assessment Director' },
-  { id: 'licensing', name: 'Mrs. C. Mwansa', role: 'TCZ Registrar' },
-  { id: 'standards', name: 'Mr. K. Tembo', role: 'Chief Standards Inspector' }
+  { id: 'ai', name: 'EduZAM Assistant', role: 'Ministry Policy & ECZ Desk', isBot: true, avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80" },
+  { id: 'admin', name: 'Super Admin', role: 'Permanent Secretary Desk', avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80" },
+  { id: 'curriculum', name: 'Dr. L. Phiri', role: 'Director CDC Curriculum', avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" },
+  { id: 'exams', name: 'Mr. B. Banda', role: 'ECZ Assessment Director', avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80" },
+  { id: 'licensing', name: 'Mrs. C. Mwansa', role: 'TCZ Registrar', avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80" },
+  { id: 'standards', name: 'Mr. K. Tembo', role: 'Chief Standards Inspector', avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80" }
+];
+
+const fallbackPortraits = [
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80"
 ];
 
 const GUIDED_PROMPTS = [
@@ -280,6 +291,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
 
   // AI Generation States
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [isInputCollapsed, setIsInputCollapsed] = useState(false);
   const [aiAbortController, setAiAbortController] = useState<AbortController | null>(null);
   const [activeTypingIndicator, setActiveTypingIndicator] = useState<string | null>(null);
 
@@ -298,6 +310,31 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
     );
   });
+
+  const getSenderPortrait = (msg: ChatMessage) => {
+    if (msg.isAi) {
+      return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80";
+    }
+    const isMine = msg.senderEmail === currentUserEmail || msg.sender === currentUserName || msg.sender === 'You';
+    if (isMine) {
+      return userPortrait;
+    }
+    const participant = SYSTEM_PARTICIPANTS.find(
+      (p) => p.name === msg.sender || p.id === msg.sender
+    );
+    if (participant?.avatar) {
+      return participant.avatar;
+    }
+    
+    // Deterministic fallback based on sender name hash
+    const name = msg.sender || 'User';
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % fallbackPortraits.length;
+    return fallbackPortraits[idx];
+  };
 
   useEffect(() => {
     const handlePortraitUpdate = (e: any) => {
@@ -626,6 +663,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
         status: 'delivered',
         createdAt: serverTimestamp()
       });
+      setIsInputCollapsed(true);
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         console.info('AI generation aborted by user.');
@@ -754,24 +792,21 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
 
   return (
     <div
-      className="w-full h-full flex flex-col bg-transparent overflow-hidden relative font-sans select-text"
+      className="w-full h-full flex flex-col bg-slate-100 overflow-hidden relative font-sans select-text"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Blended Light Colours Fading from Top Part of Communication Box */}
       <div className="absolute top-0 left-0 right-0 h-52 sm:h-64 pointer-events-none z-10 overflow-hidden">
-        {/* Soft Multi-Stop Linear Gradient Fade from Top */}
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-200/40 via-sky-200/50 via-indigo-100/40 via-rose-100/30 via-amber-100/20 to-transparent" />
-        
-        {/* Blended Light Aurora Glows */}
-        <div className="absolute -top-10 left-[5%] w-80 sm:w-96 h-40 bg-gradient-to-br from-orange-300/30 via-sky-300/35 via-cyan-200/25 to-transparent rounded-full blur-3xl" />
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-[420px] sm:w-[540px] h-44 bg-gradient-to-b from-purple-200/30 via-pink-200/25 via-orange-200/25 to-transparent rounded-full blur-3xl" />
-        <div className="absolute -top-10 right-[5%] w-80 sm:w-96 h-40 bg-gradient-to-bl from-orange-300/35 via-amber-200/35 via-rose-200/25 to-transparent rounded-full blur-3xl" />
+        {/* Soft Multi-Stop Linear Gradient Fade from Top in Pale Grey */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-200/50 via-slate-100/30 to-transparent" />
         
         {/* Delicate Top Shimmer Line */}
         <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
       </div>
+
+
 
       {/* Offline Alert Strip */}
       <AnimatePresence>
@@ -841,19 +876,19 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
       </AnimatePresence>
 
       {/* Top Section Layout: Short Header & Underlapping Contacts Ticker */}
-      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none h-14 flex items-center">
+      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none h-16 sm:h-[72px] flex items-center">
         {/* Active Contacts Scrolling Ticker (Stretches from under header to right edge) */}
-        <div className="absolute inset-0 pointer-events-auto flex items-center pl-[80px] sm:pl-[95px]">
+        <div className="absolute inset-0 pointer-events-auto flex items-center pl-[48vw] md:pl-[48%]">
           <ContactsTicker onNavigate={onNavigate} />
         </div>
 
         {/* Short Top-Left Header */}
-        <div className="absolute top-0 left-0 flex flex-col items-start pointer-events-auto">
-          <div className="pl-2.5 sm:pl-3 py-1 sm:py-1.5 pr-1 sm:pr-1.5 bg-white/95 backdrop-blur-md border-b border-r border-slate-200 rounded-r-full shadow-md flex items-center gap-2 sm:gap-2.5 relative z-30">
+        <div className="absolute top-0 left-0 flex flex-col items-start pointer-events-auto w-[45vw] md:w-[45%] max-w-[45%]">
+          <div className="w-full pl-3 pr-4 py-2.5 sm:py-3.5 bg-white/95 backdrop-blur-md border-b border-r border-slate-200 rounded-r-2xl shadow-md flex items-center justify-between gap-2.5 sm:gap-3.5 relative z-30">
             {onNavigate && (
               <button
                 onClick={() => onNavigate('dashboard')}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-black hover:text-black bg-white hover:bg-slate-100 flex items-center justify-center transition-all border border-slate-300 active:scale-95 shrink-0 cursor-pointer shadow-2xs"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full text-black hover:text-black bg-white hover:bg-slate-100 flex items-center justify-center transition-all border border-slate-300 active:scale-95 shrink-0 cursor-pointer shadow-2xs"
                 title="Return to Dashboard"
                 aria-label="Return to Dashboard"
               >
@@ -861,18 +896,28 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
               </button>
             )}
 
+            {/* Hub Title and Live Status */}
+            <div className="flex-1 flex flex-col min-w-0 mx-2">
+              <span className="font-extrabold text-xs sm:text-[13px] text-slate-800 tracking-tight truncate leading-tight">EduZAM Desk</span>
+              <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-1 leading-none mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Feed
+              </span>
+            </div>
+
             {/* User Circle Portrait Connected with Communication Hub Settings */}
             <div 
               onClick={() => onNavigate && onNavigate('settings')}
               className="relative group cursor-pointer shrink-0"
               title="View Official Profile & Settings"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-400 p-[1.5px] shadow-sm shadow-blue-600/20 transition-transform group-hover:scale-105">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-400 p-[1.5px] shadow-sm shadow-blue-600/20 transition-transform group-hover:scale-105">
                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                   <img
                     src={userPortrait}
                     alt="Officer Profile"
                     className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
                   />
                 </div>
               </div>
@@ -1024,7 +1069,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
 
       {/* Edge-to-Edge Real-Time Chat Feed with ARIA live accessibility */}
       <div 
-        className="flex-1 p-3 sm:p-5 lg:p-6 mt-16 sm:mt-18 overflow-y-auto space-y-4 bg-slate-50/70"
+        className="flex-1 p-3 sm:p-5 lg:p-6 mt-18 sm:mt-[74px] overflow-y-auto space-y-4 bg-slate-100"
         aria-live="polite"
         role="log"
       >
@@ -1050,13 +1095,13 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
                     key={msg.id}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`flex flex-col group/bubble ${isMine ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col group/bubble ${isMine ? 'items-end' : 'items-start'} w-full`}
                   >
                     {/* SENDER IDENTITY & REPLY CONTEXT (OUTSIDE BUBBLE) */}
                     {isAiMessage && (
-                      <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] font-bold text-cyan-800">
+                      <div className="flex items-center gap-1.5 mb-1 px-11 text-[11px] font-bold text-cyan-800">
                         <span className="px-1.5 py-0.5 bg-gradient-to-r from-[#071329] via-[#102752] to-[#071329] text-cyan-300 border border-cyan-400/50 rounded-md text-[9px] font-black uppercase flex items-center gap-1 shadow-2xs">
-                          <Bot className="w-3 h-3 text-cyan-300" /> AI Assistant
+                          <Compass className="w-3 h-3 text-cyan-300" /> Academic Assistant
                         </span>
                       </div>
                     )}
@@ -1065,8 +1110,8 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
                     {msg.replyTo && (
                       <div className={`mb-1 px-2.5 py-1 rounded-lg text-[11px] border-l-2 font-medium max-w-[85%] truncate ${
                         isMine 
-                          ? 'bg-teal-50 text-teal-800 border-teal-500 self-end' 
-                          : 'bg-slate-100 text-slate-700 border-teal-600 self-start'
+                          ? 'bg-teal-50 text-teal-800 border-teal-500 self-end mr-11' 
+                          : 'bg-slate-100 text-slate-700 border-teal-600 self-start ml-11'
                       }`}>
                         <div className="flex items-center gap-1 font-semibold">
                           <Reply className="w-3 h-3 shrink-0" />
@@ -1074,6 +1119,29 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
                         </div>
                       </div>
                     )}
+
+                    {/* HORIZONTAL ROW CONTAINER FOR PORTRAIT + BUBBLE */}
+                    <div className={`flex items-end gap-2.5 max-w-[95%] sm:max-w-[85%] ${
+                      isMine ? 'flex-row-reverse self-end' : 'flex-row self-start'
+                    }`}>
+                      {/* SENDER PORTRAIT CIRCLE */}
+                      <div className="w-8.5 h-8.5 rounded-full overflow-hidden shrink-0 border border-slate-300 shadow-2xs bg-white flex items-center justify-center relative transition-all">
+                        <img
+                          src={getSenderPortrait(msg)}
+                          alt={msg.sender || 'User'}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+
+                      {/* BUBBLE CONTENT WRAPPER COLUMN */}
+                      <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} min-w-0`}>
+                        {/* SENDER DISPLAY NAME (For non-mine, non-AI) */}
+                        {!isMine && !isAiMessage && (
+                          <span className="text-[10px] font-extrabold text-slate-500 mb-0.5 ml-1 uppercase tracking-wider">
+                            {msg.sender}
+                          </span>
+                        )}
 
                     {/* REACTION STICKER / DIRECTIVE BADGE */}
                     {stickerData ? (
@@ -1373,9 +1441,12 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
                       </div>
                     )}
 
+                      </div> {/* closes BUBBLE CONTENT WRAPPER COLUMN */}
+                    </div> {/* closes HORIZONTAL ROW CONTAINER FOR PORTRAIT + BUBBLE */}
+
                     {/* Display Active Emoji Reaction Badges (Outside Bubble) */}
                     {hasReactions && (
-                      <div className="flex flex-wrap items-center gap-1 mt-1 px-1">
+                      <div className={`flex flex-wrap items-center gap-1 mt-1 ${isMine ? 'mr-11 justify-end' : 'ml-11 justify-start'}`}>
                         {Object.entries(msg.reactions || {}).map(([emoji, count]) => (
                           <button
                             key={emoji}
@@ -1403,7 +1474,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-xl bg-gradient-to-r from-[#071329] via-[#102752] to-[#071329] text-cyan-300 border border-cyan-400/50 flex items-center justify-center animate-pulse shadow-xs">
-                  <Bot className="w-4 h-4 text-cyan-300" />
+                  <Compass className="w-4 h-4 text-cyan-300" />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold">{activeTypingIndicator}</span>
@@ -1440,7 +1511,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
             className="absolute bottom-20 left-4 sm:left-12 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-40 w-72 space-y-1"
           >
             <div className="px-2 py-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-              Select Officer or AI Assistant
+              Select Officer or Assistant
             </div>
             {filteredMentions.map((user) => (
               <button
@@ -1453,7 +1524,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
                     ? 'bg-gradient-to-r from-[#071329] via-[#102752] to-[#071329] text-cyan-300 border border-cyan-400/50' 
                     : 'bg-slate-200 text-slate-700'
                 }`}>
-                  {user.isBot ? <Bot className="w-4 h-4 text-cyan-300" /> : user.name.charAt(0)}
+                  {user.isBot ? <Compass className="w-4 h-4 text-cyan-300" /> : user.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
@@ -1654,34 +1725,37 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
         )}
       </AnimatePresence>
 
-      {/* Sticky Bottom Full-Width Chat Input Bar in Calm Red */}
-      <div className="relative px-2 py-1.5 sm:px-3 sm:py-2 overflow-hidden border-t border-rose-900/60 shrink-0 z-20 backdrop-blur-2xl bg-gradient-to-r from-slate-950 via-rose-950/80 to-slate-950 shadow-[0_-8px_30px_rgba(23,2,6,0.6)]">
-        {/* Calm Red Subtle Ambient Lighting */}
-        <div className="absolute inset-0 bg-radial from-rose-600/15 via-transparent to-transparent pointer-events-none" />
+      {/* Sticky Bottom Full-Width Chat Input Bar in Dark Navy Blue with White Icons */}
+      {isInputCollapsed ? (
+        <div 
+          onClick={() => setIsInputCollapsed(false)}
+          className="relative px-5 py-4 sm:py-5 border-t border-slate-800 shrink-0 z-20 bg-[#0B192C] hover:bg-[#152942] shadow-[0_-4px_15px_rgba(0,0,0,0.15)] flex items-center justify-between gap-4 cursor-pointer transition-colors"
+          title="Click to write message"
+        >
+          <div className="flex items-center gap-2.5 text-white font-extrabold text-xs sm:text-sm z-10">
+            <MessageSquare className="w-4.5 h-4.5 text-white animate-pulse" />
+            <span>Type message / Ask Eduzam Bot...</span>
+          </div>
+          <button
+            type="button"
+            className="relative px-4 py-1.5 bg-white hover:bg-slate-100 text-[#0B192C] border border-white rounded-full text-xs font-black shadow-2xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer z-10"
+          >
+            <ArrowUp className="w-3.5 h-3.5 text-[#0B192C]" />
+            <span>Expand</span>
+          </button>
+        </div>
+      ) : (
+        <div className="relative px-3 py-3 sm:px-4 sm:py-4.5 overflow-hidden border-t border-slate-800 shrink-0 z-20 bg-[#0B192C] shadow-[0_-4px_15px_rgba(0,0,0,0.15)]">
         
-        {/* Serene Subtle Red Floating Aura */}
-        <motion.div
-          animate={{
-            x: ['-20%', '120%', '-20%'],
-            opacity: [0.25, 0.45, 0.25]
-          }}
-          transition={{
-            duration: 16,
-            repeat: Infinity,
-            ease: 'easeInOut'
-          }}
-          className="absolute -top-10 left-0 w-80 h-28 rounded-full bg-rose-500/15 blur-3xl pointer-events-none"
-        />
-
-        {/* Refined Sweeping Top Sheen Line */}
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-rose-400/40 to-transparent pointer-events-none" />
+        {/* Refined Sweeping Top Sheen Line in White */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
         <form
           onSubmit={(e) => {
             e.preventDefault();
             sendMessageToFirestore();
           }}
-          className="relative max-w-4xl mx-auto flex items-center gap-1 sm:gap-1.5"
+          className="relative max-w-4xl mx-auto flex items-center gap-2 sm:gap-3"
         >
           {/* Hidden Image File Input */}
           <input
@@ -1692,57 +1766,7 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
             className="hidden"
           />
 
-          {/* Left Action Icons Container in Calm Red Glass */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 relative p-0.5 rounded-xl bg-rose-950/60 backdrop-blur-md border border-rose-800/50 shadow-inner">
-            {/* Upload Image Button */}
-            <motion.button
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-7.5 h-7.5 sm:w-8.5 sm:h-8.5 text-slate-200 hover:text-white bg-rose-900/40 hover:bg-rose-800/60 border border-rose-700/50 rounded-lg sm:rounded-xl transition-all shrink-0 cursor-pointer flex items-center justify-center shadow-xs"
-              title="Upload Image (Auto-Compressed)"
-              aria-label="Upload Image"
-            >
-              <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-200 stroke-[2.2]" />
-            </motion.button>
-
-            {/* Voice Note Button with Animated Recording Pulse */}
-            <motion.button
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
-              type="button"
-              onClick={isRecordingAudio ? stopAndSendAudio : startAudioRecording}
-              className={`w-7.5 h-7.5 sm:w-8.5 sm:h-8.5 rounded-lg sm:rounded-xl transition-all border shrink-0 cursor-pointer flex items-center justify-center shadow-xs ${
-                isRecordingAudio 
-                  ? 'bg-rose-600 text-white border-rose-500 animate-pulse ring-2 ring-rose-400/80' 
-                  : 'text-slate-200 hover:text-white bg-rose-900/40 hover:bg-rose-800/60 border-rose-700/50'
-              }`}
-              title={isRecordingAudio ? 'Stop Recording' : 'Record Audio Note'}
-              aria-label="Voice Note"
-            >
-              <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-200 stroke-[2.2]" />
-            </motion.button>
-
-            {/* Reaction & Emoji Drawer Toggle */}
-            <motion.button
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`w-7.5 h-7.5 sm:w-8.5 sm:h-8.5 rounded-lg sm:rounded-xl transition-all border shrink-0 cursor-pointer flex items-center justify-center shadow-xs ${
-                showEmojiPicker
-                  ? 'bg-rose-600 text-white border-rose-400 ring-2 ring-rose-400/70 shadow-sm'
-                  : 'text-slate-200 hover:text-white bg-rose-900/40 hover:bg-rose-800/60 border-rose-700/50'
-              }`}
-              title="Insert Emojis & Directives"
-              aria-label="Insert Emojis & Directives"
-            >
-              <Smile className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-200 stroke-[2.2]" />
-            </motion.button>
-          </div>
-
-          {/* Text Input with @ Mention autocomplete trigger, enlarged in Google Sans */}
+          {/* Text Input in White text with Dark Slate background */}
           <input
             ref={inputRef}
             type="text"
@@ -1756,32 +1780,33 @@ export default function CommunicationHub({ onNavigate }: CommunicationHubProps) 
                 }
               }
             }}
-            placeholder="Message team, type @ for officer or @Assistant for AI..."
-            className="flex-1 min-w-0 px-2.5 sm:px-3.5 h-7.5 sm:h-8.5 bg-slate-900/90 border border-rose-800/60 focus:border-rose-400 rounded-lg sm:rounded-xl font-google-sans text-[13px] sm:text-[14px] text-white focus:outline-none focus:ring-2 focus:ring-rose-500/30 font-medium placeholder:text-slate-400 shadow-2xs"
+            placeholder="Message team, type @ for officer or @Assistant..."
+            className="flex-1 min-w-0 px-4 h-11 sm:h-12 bg-[#152942] border border-slate-700 focus:border-slate-500 rounded-xl font-google-sans text-[14px] sm:text-[15px] text-white focus:outline-none focus:ring-2 focus:ring-white/15 font-medium placeholder:text-slate-400 shadow-2xs"
           />
 
-          {/* Submit Button in Calm Red */}
+          {/* Submit Button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.93 }}
             type="submit"
             disabled={(!inputMessage.trim() && !selectedImage) || isSending}
-            className={`px-3 sm:px-3.5 h-7.5 sm:h-8.5 rounded-lg sm:rounded-xl font-bold text-xs flex items-center justify-center gap-1 sm:gap-1.5 transition-all shrink-0 shadow-md ${
+            className={`px-4 sm:px-5 h-11 sm:h-12 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 sm:gap-2 transition-all shrink-0 shadow-md ${
               (inputMessage.trim() || selectedImage) && !isSending
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50 cursor-pointer ring-1 ring-rose-400/50'
-                : 'bg-rose-950/40 text-slate-500 border border-rose-900/40 cursor-not-allowed opacity-50 backdrop-blur-sm'
+                ? 'bg-white hover:bg-slate-100 text-[#0B192C] shadow-white/10 cursor-pointer border border-white'
+                : 'bg-[#152942]/50 text-slate-500 border border-slate-800 cursor-not-allowed opacity-50'
             }`}
             aria-label="Send message"
           >
             {isSending ? (
-              <RefreshCw className="w-3.5 h-3.5 text-white animate-spin" />
+              <RefreshCw className="w-4 h-4 text-[#0B192C] animate-spin" />
             ) : (
-              <Send className="w-3.5 h-3.5 text-white stroke-[2.2]" />
+              <Send className="w-4 h-4 text-[#0B192C] stroke-[2.2]" />
             )}
-            <span className="font-google-sans text-[12px] text-white font-bold">{isSending ? 'Sending...' : 'Send'}</span>
+            <span className="font-google-sans text-[13px] text-[#0B192C] font-bold">{isSending ? 'Sending...' : 'Send'}</span>
           </motion.button>
         </form>
       </div>
+      )}
     </div>
   );
 }

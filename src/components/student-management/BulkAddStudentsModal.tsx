@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Upload, ClipboardPaste, Camera, CheckCircle2, Sparkles, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { X, Upload, ClipboardPaste, Camera, CheckCircle2, Zap, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { SchoolClass, StudentCandidate } from '../../types';
 import { generateParentDetailsForStudent } from '../../data/parentsData';
 
@@ -488,7 +488,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                     activeTab === 'ai' ? 'bg-white text-teal-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600" /> AI Gen
+                  <Zap className="w-3.5 h-3.5 text-teal-600" /> Auto Gen
                 </button>
               </div>
 
@@ -502,7 +502,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                       </label>
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-[10px] font-bold">
-                          <Sparkles className="w-3 h-3 text-teal-600" /> Auto-Adjustment Active
+                          <Zap className="w-3 h-3 text-teal-600" /> Auto-Adjustment Active
                         </span>
                         {previewAdjustedNames.length > 0 && (
                           <button
@@ -700,13 +700,13 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                 </div>
               )}
 
-              {/* Tab 4: AI Generate Names */}
+              {/* Tab 4: Auto Generate Names */}
               {activeTab === 'ai' && (
                 <div className="space-y-4">
                   <form onSubmit={handleAIGenerate} className="space-y-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-teal-600" /> AI Generation Prompt & Instructions
+                        <Zap className="w-3.5 h-3.5 text-teal-600" /> Batch Generator Prompt & Instructions
                       </label>
                       <textarea
                         rows={3}
@@ -721,15 +721,15 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                       disabled={aiGenerating || !aiPrompt.trim()}
                       className="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
                     >
-                      <Sparkles className={`w-4 h-4 ${aiGenerating ? 'animate-spin' : ''}`} />
-                      {aiGenerating ? 'AI generating roster...' : 'Generate Names with AI'}
+                      <Zap className={`w-4 h-4 ${aiGenerating ? 'animate-spin' : ''}`} />
+                      {aiGenerating ? 'Generating roster...' : 'Generate Names'}
                     </button>
                   </form>
 
                   {aiNamesList.length > 0 && (
                     <div className="space-y-3 pt-2 border-t border-slate-100">
                       <div className="p-2.5 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between text-xs text-teal-900 font-bold">
-                        <span>AI Generated {aiNamesList.length} Student Names:</span>
+                        <span>Generated {aiNamesList.length} Student Names:</span>
                         <button
                           type="button"
                           onClick={() => setAiNamesList([])}
@@ -743,7 +743,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                         {aiNamesList.map((name, idx) => (
                           <div key={idx} className="text-xs font-bold text-slate-800 bg-white px-3 py-2 rounded-xl border border-slate-100 flex items-center justify-between">
                             <span>{idx + 1}. {name}</span>
-                            <span className="text-[10px] text-teal-700 font-mono">AI Engine</span>
+                            <span className="text-[10px] text-teal-700 font-mono">Auto Engine</span>
                           </div>
                         ))}
                       </div>
@@ -755,7 +755,7 @@ export const BulkAddStudentsModal: React.FC<BulkAddStudentsModalProps> = ({
                           onClick={handleSaveAIGenerated}
                           className="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold shadow-sm active:scale-95 cursor-pointer transition-all"
                         >
-                          {isSubmitting ? 'Enrolling AI Roster...' : `Add All ${aiNamesList.length} AI Students to Class`}
+                          {isSubmitting ? 'Enrolling Roster...' : `Add All ${aiNamesList.length} Students to Class`}
                         </button>
                       </div>
                     </div>

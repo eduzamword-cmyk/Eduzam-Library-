@@ -6,6 +6,99 @@
  * and comprehensive progression stage matrices across all educational levels and subjects.
  */
 
+export type LessonNature = 'theory' | 'practical' | 'fieldwork' | 'revision';
+
+export interface StageDistribution {
+  introMin: string;
+  devMin: string;
+  appMin: string;
+  concMin: string;
+}
+
+/**
+ * Intelligent Lesson Stage Minutes Calculator according to total duration and lesson nature.
+ * For practical/fieldwork lessons, significantly MORE time is awarded to the Hands-on Practical/Application stage.
+ */
+export function calculateStageMinutes(
+  totalMinutes: number | string,
+  nature: LessonNature = 'theory'
+): StageDistribution {
+  const total = Math.max(15, parseInt(String(totalMinutes), 10) || 80);
+
+  let introPct = 0.125;
+  let devPct = 0.50;
+  let appPct = 0.25;
+  let concPct = 0.125;
+
+  if (nature === 'practical' || nature === 'fieldwork') {
+    // For practical/hands-on lessons, award major time share (55% - 65%) to Practical Execution / Hands-on Experimentation Stage
+    introPct = 0.12; // Quick safety hook & briefing
+    devPct = 0.18;  // Concise procedure demonstration
+    appPct = 0.58;  // MAJORITY OF TIME AWARDED TO PRACTICAL/HANDS-ON WORK
+    concPct = 0.12; // Cleanup, data review & wrap-up
+  } else if (nature === 'revision') {
+    // Revision / Timed Assessment
+    introPct = 0.10;
+    devPct = 0.20;
+    appPct = 0.55;  // Extensive assessment drills
+    concPct = 0.15;
+  } else {
+    // Standard Theory / Classroom Instruction
+    introPct = 0.125; // 10m out of 80m
+    devPct = 0.50;   // 40m out of 80m
+    appPct = 0.25;   // 20m out of 80m
+    concPct = 0.125; // 10m out of 80m
+  }
+
+  let intro = Math.max(2, Math.round(total * introPct));
+  let dev = Math.max(3, Math.round(total * devPct));
+  let conc = Math.max(2, Math.round(total * concPct));
+  let app = total - (intro + dev + conc);
+
+  // Guarantee that in practical mode, appMin receives >= 50% of total lesson time
+  if ((nature === 'practical' || nature === 'fieldwork') && app < Math.floor(total * 0.5)) {
+    const boost = Math.floor(total * 0.5) - app;
+    app += boost;
+    if (dev - boost >= 3) {
+      dev -= boost;
+    } else {
+      const remainder = boost - (dev - 3);
+      dev = 3;
+      intro = Math.max(2, intro - remainder);
+    }
+  }
+
+  // Exact sanity check to make sure sum equals total duration
+  const currentSum = intro + dev + app + conc;
+  if (currentSum !== total) {
+    app += (total - currentSum);
+  }
+
+  return {
+    introMin: String(intro),
+    devMin: String(dev),
+    appMin: String(app),
+    concMin: String(conc)
+  };
+}
+
+/**
+ * Auto-detect lesson nature based on subject and topic keywords
+ */
+export function autoDetectLessonNature(subject: string = '', topic: string = ''): LessonNature {
+  const text = `${subject} ${topic}`.toLowerCase();
+  if (/pe|physical education|sports|athletics|football|netball|fieldwork|survey|geography field/i.test(text)) {
+    return 'fieldwork';
+  }
+  if (/practical|laboratory|lab|experiment|science|biology|chemistry|physics|computer|agriculture|woodwork|metalwork|technical drawing|home economics|food|nutrition|art|craft|music/i.test(text)) {
+    return 'practical';
+  }
+  if (/revision|past paper|mock|test|assessment|exam preparation/i.test(text)) {
+    return 'revision';
+  }
+  return 'theory';
+}
+
 export interface CDCLessonDataset {
   topic: string;
   subTopic: string;
@@ -385,35 +478,58 @@ export const NATIONAL_CDC_CURRICULUM_BANK: Record<string, CDCLessonDataset[]> = 
  * Synthesizes a comprehensive, 100% complete Zambian CDC & CBC lesson plan dataset
  * ensuring all curriculum fields and progression stages are fully populated.
  */
-export function generateSynthesizedCDCPlan(subject: string, level: string, topic: string): CDCLessonDataset {
+/**
+ * Synthesizes a comprehensive, 100% complete Zambian CDC & CBC lesson plan dataset
+ * with support for 45 distinct pedagogical variants for any topic.
+ */
+export function generateSynthesizedCDCPlan(
+  subject: string, 
+  level: string, 
+  topic: string, 
+  variantIndex: number = 1,
+  duration: number | string = 80,
+  nature?: LessonNature
+): CDCLessonDataset {
   const normSubject = (subject || 'Mathematics').trim().toLowerCase();
   const normLevel = (level || 'Grade 10').trim();
   const cleanTopic = (topic || '').trim();
+  const effectiveNature = nature || autoDetectLessonNature(normSubject, cleanTopic);
+  const stageMins = calculateStageMinutes(duration, effectiveNature);
 
   // 1. Check if we have exact match in our curriculum bank
   for (const [key, list] of Object.entries(NATIONAL_CDC_CURRICULUM_BANK)) {
     if (normSubject.includes(key) || key.includes(normSubject)) {
       if (cleanTopic) {
         const found = list.find(item => item.topic.toLowerCase().includes(cleanTopic.toLowerCase()) || cleanTopic.toLowerCase().includes(item.topic.toLowerCase()));
-        if (found) return found;
-      }
-      if (list.length > 0) {
-        // Return first entry from subject bank with customized topic if specified
-        const base = list[0];
-        if (cleanTopic && cleanTopic !== base.topic) {
+        if (found) {
+          // If variantIndex > 1, create a specific tailored variant
+          if (variantIndex > 1) {
+            return applyVariantTransformation(found, variantIndex, subject, normLevel, cleanTopic, duration, effectiveNature);
+          }
           return {
-            ...base,
-            topic: cleanTopic,
-            subTopic: `${cleanTopic} - Key Principles & Applications`,
-            references: `Republic of Zambia MoE CDC ${subject} (${normLevel}) Syllabus; National e-Library: ZAM-ELIB-${subject.substring(0, 4).toUpperCase()}-${normLevel.replace(/[^0-9]/g, '') || '10'}.`,
+            ...found,
+            stages: {
+              ...found.stages,
+              ...stageMins
+            }
           };
         }
-        return base;
+      }
+      if (list.length > 0) {
+        const base = list[0];
+        const targetTopic = cleanTopic || base.topic;
+        const adapted = {
+          ...base,
+          topic: targetTopic,
+          subTopic: `${targetTopic} - Variant ${variantIndex}: ${getVariantTitle(variantIndex)}`,
+          references: `Republic of Zambia MoE CDC ${subject} (${normLevel}) Syllabus; National e-Library: ZAM-ELIB-${subject.substring(0, 4).toUpperCase()}-${normLevel.replace(/[^0-9]/g, '') || '10'}-V${variantIndex}.`,
+        };
+        return applyVariantTransformation(adapted, variantIndex, subject, normLevel, targetTopic, duration, effectiveNature);
       }
     }
   }
 
-  // 2. Dynamic Universal Zambian Curriculum Generator for all other subjects and topics
+  // 2. Dynamic Universal Zambian Curriculum Generator supporting 45 distinct variants
   const isPE = /physical education|p\.e\.?|pe|sports/i.test(normSubject);
   const isLanguage = /english|bemba|nyanja|tonga|lozi|french|literature/i.test(normSubject);
   const isScience = /science|biology|chemistry|physics|agricultural|computer/i.test(normSubject);
@@ -421,59 +537,202 @@ export function generateSynthesizedCDCPlan(subject: string, level: string, topic
   const isVocational = /woodwork|metalwork|technical|design|home economics|food|fashion|art|music/i.test(normSubject);
 
   const fallbackTopic = cleanTopic || (isScience ? 'Scientific Principles and Practical Applications' : isLanguage ? 'Syntactic Structures and Expressive Composition' : isSocial ? 'Civic Governance, Heritage and Sustainable Development' : isVocational ? 'Design Principles, Materials and Workshop Practice' : isPE ? 'Movement Fundamentals and Teamwork' : 'Foundational Competencies and Analysis');
-  const fallbackSubTopic = `${fallbackTopic} - Core Concepts, Methods and Practical Integration`;
+  
+  const variantTitle = getVariantTitle(variantIndex);
+  const fallbackSubTopic = `${fallbackTopic} - Approach ${variantIndex}: ${variantTitle}`;
 
-  return {
+  const baseDataset: CDCLessonDataset = {
     topic: fallbackTopic,
     subTopic: fallbackSubTopic,
-    generalCompetences: `Demonstrate mastery of ${subject} core competencies, critical inquiry, problem-solving, and practical application aligned with the Zambia Competence-Based Curriculum (CBC) framework.`,
-    specificCompetences: `1. Explain the fundamental concepts, terminology, and principles of ${fallbackTopic}.\n2. Apply systematic procedures and analytical methods to investigate and solve contextual problems.\n3. Demonstrate collaborative and practical skills in structured tasks and discussions.\n4. Evaluate outcomes, draw valid conclusions, and communicate findings accurately.`,
-    rationale: `Mastery of ${fallbackTopic} in ${subject} empowers learners with essential analytical, vocational, and communicative skills for national development and lifelong learning.`,
-    priorKnowledge: `Learners have completed foundational units in ${subject} and possess basic operational and conceptual understanding.`,
-    references: `Republic of Zambia Ministry of Education CDC National ${subject} Syllabus (${normLevel}); National e-Library Resource ID: ZAM-ELIB-CDC-${subject.slice(0, 4).toUpperCase()}-${Date.now().toString().slice(-4)}; ECZ Curriculum Assessment Guidelines.`,
-    resources: isScience 
-      ? 'Laboratory equipment, test specimens, charts, digital simulations, student worksheets, textbooks.' 
-      : isLanguage 
-      ? 'Text passages, dictionary, audio-visual prompts, writing worksheets, chalk/whiteboard.' 
-      : isPE 
-      ? 'Cones, sports balls, bibs, whistle, stopwatch, court markers.' 
-      : isVocational 
-      ? 'Workshop tools, safety equipment, material samples, design drafting sheets.' 
-      : 'Pupil textbooks, whiteboard, wall charts, exercise books, structured task sheets.',
-    learningEnvironment: isPE 
-      ? 'Outdoor school sports field / open court with safety boundary markers.' 
-      : isScience 
-      ? 'Subject laboratory with appropriate safety equipment and workstation benches.' 
-      : isVocational 
-      ? 'Design & technology workshop / specialist room with workbench organization.' 
-      : 'Well-ventilated classroom with collaborative small-group seating arrangements.',
-    expectedStandards: `At least 85% of learners achieve competence in explaining and applying ${fallbackTopic} within the prescribed lesson duration.`,
-    homework: `Complete Review Questions 1 through 6 on ${fallbackTopic} in the approved MoE Pupil's Textbook for ${normLevel}.`,
-    lessonEvaluation: `Lesson objectives were successfully achieved. Learners actively participated in group activities and demonstrated sound conceptual grasp during the plenary evaluation.`,
+    generalCompetences: `Demonstrate mastery of ${subject} core competencies, critical inquiry, problem-solving, and practical application aligned with the Zambia Competence-Based Curriculum (CBC) framework (Variant ${variantIndex}: ${variantTitle}).`,
+    specificCompetences: `1. Explain fundamental concepts and terminology associated with ${fallbackTopic} using ${variantTitle.toLowerCase()}.\n2. Apply structured analytical methods and practical procedures to investigate contextual challenges in Zambia.\n3. Collaborate effectively in peer teams to execute inquiry tasks and evaluate outcomes.\n4. Communicate findings clearly and demonstrate civic/economic awareness.`,
+    rationale: `Mastery of ${fallbackTopic} through ${variantTitle} equips learners with vital analytical, practical, and critical thinking capabilities for national development in Zambia.`,
+    priorKnowledge: `Learners possess foundational understanding from prior units in ${subject} and have encountered basic terminology related to ${fallbackTopic}.`,
+    references: `Republic of Zambia Ministry of Education CDC National ${subject} Syllabus (${normLevel}); National e-Library Resource ID: ZAM-ELIB-CDC-${subject.slice(0, 4).toUpperCase()}-V${variantIndex}; ECZ Curriculum Framework.`,
+    resources: getVariantResources(isScience, isLanguage, isPE, isVocational, variantIndex),
+    learningEnvironment: getVariantEnvironment(isPE, isScience, isVocational, variantIndex),
+    expectedStandards: `At least 88% of learners achieve competence in explaining and applying ${fallbackTopic} through ${variantTitle} within the lesson duration.`,
+    homework: `Complete Exercise Variant ${variantIndex} (Questions 1-6) on ${fallbackTopic} from the approved MoE Pupil's Textbook for ${normLevel}.`,
+    lessonEvaluation: `Variant ${variantIndex} (${variantTitle}) successfully engaged learners. Active participation and formative checkpoints confirmed high conceptual mastery.`,
     stages: {
-      introMin: '10',
-      introTeacher: `Introduces ${fallbackTopic} using an engaging real-world scenario and thought-provoking diagnostic questions to activate prior knowledge.`,
-      introLearners: 'Listen attentively, analyze the introductory scenario, and respond to diagnostic prompts with enthusiasm.',
-      introFormation: isPE ? 'Three parallel lines facing the instructor for dynamic warm-up.' : 'Whole-class attentive plenary setting.',
-      introAssessment: 'Oral questioning and rapid diagnostic thumbs-up/down poll.',
+      introMin: stageMins.introMin,
+      introTeacher: getVariantIntroTeacher(fallbackTopic, variantIndex),
+      introLearners: getVariantIntroLearners(variantIndex),
+      introFormation: isPE ? 'Dynamic staggered formation across the court.' : 'Whole-class interactive plenary setting.',
+      introAssessment: 'Diagnostic questioning and entry readiness check.',
 
-      devMin: '40',
-      devTeacher: `Presents core concepts of ${fallbackTopic} step-by-step using interactive visual aids and guided demonstrations. Clarifies key terminology and models worked examples.`,
-      devLearners: 'Take structured notes, ask clarifying questions, and collaborate in paired clusters on guided practice tasks.',
-      devFormation: isPE ? 'Two facing drill lines across the court.' : 'Paired clusters and interactive desk pods.',
-      devAssessment: 'Direct observation, oral questioning, and circulating feedback on learner draft notes.',
+      devMin: stageMins.devMin,
+      devTeacher: getVariantDevTeacher(fallbackTopic, variantIndex),
+      devLearners: getVariantDevLearners(variantIndex),
+      devFormation: isPE ? 'Paired drill lines with rotational pacing.' : 'Collaborative table clusters / lab pods.',
+      devAssessment: 'Formative observation, guided questioning, and spot checks.',
 
-      appMin: '20',
-      appTeacher: `Assigns structured exercises and practical problem-solving tasks on ${fallbackTopic}. Circulates to provide differentiated guidance and individual feedback.`,
-      appLearners: 'Work independently and in designated pairs to complete assigned exercises in their workbooks, applying the standard methods.',
-      appFormation: isPE ? 'Small-sided 4v4 game simulation or station rotations.' : 'Individual focused seatwork with peer consultation.',
-      appAssessment: 'Marking student workbook solutions and reviewing key steps against the standard marking guide.',
+      appMin: stageMins.appMin,
+      appTeacher: getVariantAppTeacher(fallbackTopic, variantIndex),
+      appLearners: getVariantAppLearners(variantIndex),
+      appFormation: isPE ? 'Small-sided application simulation game.' : (effectiveNature === 'practical' ? 'Hands-on laboratory/workshop station layout with active experimentation.' : 'Individual focused seatwork with peer consultation.'),
+      appAssessment: effectiveNature === 'practical' ? 'Direct observation of practical performance, experimental measurements, and rubric checklist.' : 'Marking workbook solutions against standard MoE criteria.',
 
-      concMin: '10',
-      concTeacher: `Summarizes key takeaways for ${fallbackTopic}, addresses common misconceptions, assigns homework, and guides final reflection.`,
-      concLearners: 'Summarize main learning points in their notebooks and participate in the plenary exit ticket assessment.',
-      concFormation: isPE ? 'Seated cool-down circle around center court.' : 'Whole-class plenary wrap-up.',
-      concAssessment: 'Quick-fire exit ticket questions testing the primary lesson outcome.'
+      concMin: stageMins.concMin,
+      concTeacher: getVariantConcTeacher(fallbackTopic, variantIndex),
+      concLearners: getVariantConcLearners(variantIndex),
+      concFormation: isPE ? 'Seated cool-down reflection circle.' : 'Whole-class plenary wrap-up and exit ticket.',
+      concAssessment: 'Quick-fire exit ticket questions testing lesson outcomes.'
+    }
+  };
+
+  return baseDataset;
+}
+
+export function getVariantTitle(index: number): string {
+  const titles = [
+    'SPRINT Action Research & Inquiry Approach',
+    'Cooperative Peer Jigsaw Methodology',
+    'Zambian Industrial & Agricultural Problem-Solving',
+    'ICT & National e-Library Digital Simulation',
+    'Inclusive SEN Differentiated Mastery Framework',
+    'Fieldwork & Community Practical Investigation',
+    'Peer Assessment Rubric Workshop',
+    'Socratic Guided Discovery Model',
+    'Indigenous Zambian Knowledge & Science Integration',
+    'Project-Based Entrepreneurship & Enterprise Education',
+    'Constructivist Scaffolded Inquiry',
+    'Explicit Direct Instruction & Worked Examples',
+    'Flipped Classroom Pre-Reading Analysis',
+    'Station Rotation Blended Learning Model',
+    'Concept Mapping & Hierarchical Synthesis',
+    'Experimental Scientific Hypothesis Testing',
+    'Case Study Analysis (ZESCO & Mining)',
+    'Think-Pair-Share Collaborative Dialogue',
+    'Gamified Quiz & Interactive Challenge',
+    'Remedial Mastery Intervention Cycle',
+    'Inquiry-Based Scientific Modeling',
+    'Environmental Conservation & Sustainable Development Link',
+    'Historical Chronology & Primary Source Analysis',
+    'Spatial Data Interpretation & GIS Mapping',
+    'Financial Literacy & Resource Allocation Modeling',
+    'Civic Ethics & Community Responsibility Debate',
+    'Structural Design & Technical Drawing Protocol',
+    'Nutritional & Health Wellness Practical Application',
+    'Creative Arts Expression & Aesthetic Critique',
+    'Traditional Music & Cultural Heritage Performance',
+    'Advanced Algorithmic Problem Solving & Logic',
+    'Biotechnical & Agricultural Production Inquiry',
+    'Chemical Synthesis & Environmental Safety Protocol',
+    'Mechanics & Kinetic Energy Practical Investigation',
+    'Linguistic Syntactic Mastery & Expository Writing',
+    'Sociolinguistic Oral Communication & Debate',
+    'Mathematical Modeling of Economic Growth',
+    'Statistical Data Collection & Field Census Project',
+    'Renewable Energy & Solar Tech Practical Assembly',
+    'Water Resource Management & Hydrological Audit',
+    'Post-Colonial Literature & Critical Discourse Analysis',
+    'Entrepreneurial Business Plan Formulation',
+    'Biomechanics & Athletic Performance Optimization',
+    'Community Health & Epidemiology Tracking Study',
+    'National Heritage Preservation & Cultural Tourism Project'
+  ];
+  return titles[(index - 1) % titles.length] || `Advanced Pedagogical Variant ${index}`;
+}
+
+function getVariantResources(isScience: boolean, isLanguage: boolean, isPE: boolean, isVocational: boolean, index: number): string {
+  const mediaTypes = ['Digital tablets', 'Printed charts', 'Laboratory specimens', 'Audio recordings', 'Field measurement kits', 'Interactive models'];
+  const media = mediaTypes[(index - 1) % mediaTypes.length];
+  if (isScience) return `Laboratory apparatus, chemical reagents, safety goggles, ${media}, MoE Physics/Chemistry/Biology Textbook.`;
+  if (isLanguage) return `Anthology texts, vocabulary cards, whiteboard markers, dictionary, ${media}.`;
+  if (isPE) return `Cones, training bibs, whistles, stopwatches, match balls, ${media}.`;
+  if (isVocational) return `Workshop tools, safety gear, raw material samples, drafting boards, ${media}.`;
+  return `Pupil textbooks, whiteboard, structured worksheets, exercise books, ${media}.`;
+}
+
+function getVariantEnvironment(isPE: boolean, isScience: boolean, isVocational: boolean, index: number): string {
+  if (isPE) return index % 2 === 0 ? 'Outdoor school sports field with full safety perimeter.' : 'Covered pavilion hall with matting and cone markers.';
+  if (isScience) return index % 2 === 0 ? 'Equipped science laboratory with running water and fume cupboards.' : 'Interactive multimedia computer lab with workstation benches.';
+  if (isVocational) return 'Design & technology workshop with safety-inspected workbenches and tool racks.';
+  return index % 3 === 0 ? 'U-shaped seating arrangement for interactive debate and discussion.' : 'Collaborative cluster seating for small group problem solving.';
+}
+
+function getVariantIntroTeacher(topic: string, index: number): string {
+  const hooks = [
+    `Introduces ${topic} by presenting a compelling real-world challenge faced by Zambian communities.`,
+    `Leads a 5-minute SPRINT brainstorming session on ${topic} to gauge prior experiences.`,
+    `Displays an interactive chart illustrating ${topic} and poses a guiding Socratic question.`,
+    `Facilitates a quick diagnostic quiz on foundational concepts related to ${topic}.`,
+    `Demonstrates a surprising physical phenomenon or numerical puzzle connected to ${topic}.`
+  ];
+  return hooks[(index - 1) % hooks.length];
+}
+
+function getVariantIntroLearners(index: number): string {
+  const responses = [
+    'Actively analyze the problem scenario, share observations, and formulate initial hypotheses.',
+    'Participate in small-group brainstorming and record preliminary ideas on mini-whiteboards.',
+    'Respond to diagnostic prompts and connect past lessons to the current topic.',
+    'Examine visual exhibits and note down key guiding questions for the lesson.'
+  ];
+  return responses[(index - 1) % responses.length];
+}
+
+function getVariantDevTeacher(topic: string, index: number): string {
+  const devStyles = [
+    `Presents core principles of ${topic} using structured step-by-step whiteboard models and guided examples.`,
+    `Facilitates a collaborative jigsaw activity where expert groups investigate sub-components of ${topic}.`,
+    `Demonstrates practical application methods for ${topic} with active student participation.`,
+    `Guides learners through a structured inquiry workbook exploring ${topic} in depth.`
+  ];
+  return devStyles[(index - 1) % devStyles.length];
+}
+
+function getVariantDevLearners(index: number): string {
+  const learnerDev = [
+    'Take detailed structured notes, ask clarifying questions, and collaborate in paired desk pods.',
+    'Rotate through expert stations, synthesize findings, and teach peer group members.',
+    'Execute guided practice tasks and record observations in structured science/exercise logs.'
+  ];
+  return learnerDev[(index - 1) % learnerDev.length];
+}
+
+function getVariantAppTeacher(topic: string, index: number): string {
+  return `Assigns differentiated practical exercises and contextual problem sets on ${topic} (Variant ${index}). Circulates to provide individual scaffolding.`;
+}
+
+function getVariantAppLearners(index: number): string {
+  return 'Work independently and in assigned pairs to solve complex problem items in workbooks, applying learned principles.';
+}
+
+function getVariantConcTeacher(topic: string, index: number): string {
+  return `Synthesizes key takeaways for ${topic} (Variant ${index}), clarifies remaining misconceptions, and administers exit ticket assessment.`;
+}
+
+function getVariantConcLearners(index: number): string {
+  return 'Summarize core learnings in personal notebooks and complete the plenary exit ticket.';
+}
+
+function applyVariantTransformation(
+  base: CDCLessonDataset, 
+  variantIndex: number, 
+  subject: string, 
+  level: string, 
+  topic: string,
+  duration: number | string = 80,
+  nature: LessonNature = 'theory'
+): CDCLessonDataset {
+  const variantTitle = getVariantTitle(variantIndex);
+  const stageMins = calculateStageMinutes(duration, nature);
+
+  return {
+    ...base,
+    topic: topic,
+    subTopic: `${topic} - Variant ${variantIndex}: ${variantTitle}`,
+    generalCompetences: `${base.generalCompetences} [Pedagogical Approach Variant ${variantIndex}: ${variantTitle}]`,
+    specificCompetences: `${base.specificCompetences}\n${variantIndex}. Apply specialized ${variantTitle.toLowerCase()} methods to master ${topic}.`,
+    references: `${base.references} | Variant ${variantIndex}: ${variantTitle} Curriculum Extension.`,
+    expectedStandards: `At least ${80 + (variantIndex % 15)}% of learners achieve high proficiency in ${topic} using ${variantTitle}.`,
+    homework: `Complete Variant ${variantIndex} Assignment Sheet on ${topic} from approved MoE resources.`,
+    lessonEvaluation: `Variant ${variantIndex} (${variantTitle}) delivered excellent student engagement and measurable mastery.`,
+    stages: {
+      ...base.stages,
+      ...stageMins
     }
   };
 }

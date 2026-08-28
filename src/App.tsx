@@ -29,7 +29,6 @@ import StreamSelectPage from './components/StreamSelectPage';
 import EClassroomResources from './components/EClassroomResources';
 import StaffroomLoading from './components/StaffroomLoading';
 import LessonPlanner from './components/LessonPlanner';
-import ReportForms from './components/ReportForms';
 import ResultsManagement from './components/ResultsManagement';
 import SBAAssessment from './components/SBAAssessment';
 import PendingApprovalNotice from './components/PendingApprovalNotice';
@@ -266,8 +265,6 @@ export default function App() {
       case 'curriculum':
       case 'library':
         return <CurriculumHub onNavigate={handleNavigate} />;
-      case 'report-forms':
-        return <ReportForms onNavigate={handleNavigate} />;
       case 'results':
         return <ResultsManagement onNavigate={handleNavigate} />;
       case 'sba':
@@ -340,11 +337,11 @@ export default function App() {
 
       {/* Main Content Area - Full Width Page Size Edge to Edge with First Page Background */}
       <main 
-        className={`flex-1 flex flex-col relative w-full z-10 ${(currentView === 'markbook' || currentView === 'dashboard' || currentView === 'communication' || currentView === 'lesson-planner' || currentView === 'planner' || currentView === 'report-forms' || currentView.startsWith('private-chat:')) ? 'h-screen overflow-hidden' : 'min-h-screen'}`}
+        className={`flex-1 flex flex-col relative w-full z-10 ${(currentView === 'markbook' || currentView === 'dashboard' || currentView === 'communication' || currentView === 'lesson-planner' || currentView === 'planner' || currentView === 'results' || currentView === 'staff' || currentView.startsWith('private-chat:')) ? 'h-screen overflow-hidden' : 'min-h-screen'}`}
       >
         
         {/* Backward Navigation Sign on remaining pages */}
-        {currentView !== 'dashboard' && currentView !== 'markbook' && currentView !== 'communication' && currentView !== 'lesson-planner' && currentView !== 'planner' && currentView !== 'report-forms' && !currentView.startsWith('private-chat:') && (
+        {currentView !== 'dashboard' && currentView !== 'markbook' && currentView !== 'communication' && currentView !== 'lesson-planner' && currentView !== 'planner' && currentView !== 'results' && currentView !== 'staff' && !currentView.startsWith('private-chat:') && (
           <div className="px-2 sm:px-3 lg:px-4 pt-2 pb-1 flex items-center justify-between gap-3 shrink-0">
             <button
               onClick={() => handleNavigate('dashboard')}
@@ -357,7 +354,7 @@ export default function App() {
         )}
 
         {/* Page Container - 100% Extra Wide Page Size Edge to Edge */}
-        <div className={`flex-1 w-full ${(currentView === 'markbook' || currentView === 'dashboard' || currentView === 'communication' || currentView === 'lesson-planner' || currentView === 'planner' || currentView === 'report-forms' || currentView.startsWith('private-chat:')) ? 'p-0 h-full flex flex-col overflow-y-auto' : currentView === 'curriculum' ? 'px-1 sm:px-2 py-1' : 'px-4 sm:px-6 lg:px-10 py-5'}`}>
+        <div className={`flex-1 w-full ${(currentView === 'markbook' || currentView === 'dashboard' || currentView === 'communication' || currentView === 'lesson-planner' || currentView === 'planner' || currentView === 'results' || currentView === 'staff' || currentView.startsWith('private-chat:')) ? 'p-0 h-full flex flex-col overflow-y-auto' : currentView === 'curriculum' ? 'px-1 sm:px-2 py-1' : 'px-4 sm:px-6 lg:px-10 py-5'}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentView}
@@ -365,7 +362,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.15 }}
-              className={`w-full ${(currentView === 'markbook' || currentView === 'dashboard' || currentView === 'communication' || currentView.startsWith('private-chat:')) ? 'h-full flex flex-col overflow-hidden' : ''}`}
+              className={`w-full ${(currentView === 'markbook' || currentView === 'dashboard' || currentView === 'communication' || currentView === 'results' || currentView === 'staff' || currentView.startsWith('private-chat:')) ? 'h-full flex flex-col' : ''}`}
             >
               {renderView()}
             </motion.div>

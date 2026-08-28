@@ -1,16 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Bot, Send, Sparkles, BrainCircuit, LineChart } from 'lucide-react';
+import { Compass, Send, ShieldCheck, BrainCircuit, LineChart, BookOpen } from 'lucide-react';
 
 export default function AIAssistant() {
   const [query, setQuery] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    {
-      id: 1,
-      role: 'assistant',
-      text: "Good day, Educator. I am your dedicated EDUZAM AI Assistant, engineered to support your mission with strategic lesson planning, advanced performance analytics, and official curriculum review. How may I support your official objectives today?"
+  const [chatHistory, setChatHistory] = useState(() => {
+    const saved = localStorage.getItem('ai_assistant_chat');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Failed to parse ai_assistant_chat', e);
+      }
     }
-  ]);
+    return [
+      {
+        id: 1,
+        role: 'assistant',
+        text: "Good day, Educator. I am your dedicated EDUZAM Academic Assistant, engineered to support your mission with strategic lesson planning, advanced performance analytics, and official curriculum review. How may I support your official objectives today?"
+      }
+    ];
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('ai_assistant_chat', JSON.stringify(chatHistory));
+  }, [chatHistory]);
+
   const [isTyping, setIsTyping] = useState(false);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -58,12 +73,12 @@ export default function AIAssistant() {
       <header className="bg-gradient-to-r from-purple-700 to-indigo-700 p-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-[inset_0_2px_6px_rgba(0,0,0,0.5),0_8px_20px_rgba(0,0,0,0.35)] bg-gradient-to-br from-purple-950 via-slate-900 to-indigo-950">
-            <Bot className="w-7 h-7 text-indigo-200 drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)]" />
+            <Compass className="w-7 h-7 text-indigo-200 drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)]" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">AI Education Assistant</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">Academic & Curriculum Assistant</h2>
             <p className="text-purple-200 text-sm flex items-center gap-2">
-              <Sparkles className="w-3 h-3" /> Ministry Academic Engine
+              <ShieldCheck className="w-3 h-3" /> Ministry Academic Engine
             </p>
           </div>
         </div>
@@ -79,13 +94,13 @@ export default function AIAssistant() {
               className="space-y-4"
             >
               <div className="w-16 h-16 bg-purple-100 text-purple-700 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-purple-200 mb-2">
-                <Bot className="w-9 h-9" />
+                <Compass className="w-9 h-9" />
               </div>
               <h1 className="text-8xl font-black text-slate-900 tracking-tighter leading-none py-2">
                 Good day, Educator.
               </h1>
               <p className="text-lg text-slate-600 font-medium leading-relaxed">
-                I am your dedicated <span className="text-purple-700 font-bold">EDUZAM AI Assistant</span>, 
+                I am your dedicated <span className="text-purple-700 font-bold">EDUZAM Academic Assistant</span>, 
                 engineered to support your mission with strategic lesson planning, 
                 advanced performance analytics, and official curriculum review.
               </p>
@@ -130,7 +145,7 @@ export default function AIAssistant() {
               <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${
                 msg.role === 'user' ? 'bg-slate-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500'
               }`}>
-                {msg.role === 'user' ? 'U' : <Bot className="w-4 h-4" />}
+                {msg.role === 'user' ? 'U' : <Compass className="w-4 h-4" />}
               </div>
               <div className={`p-4 rounded-2xl ${
                 msg.role === 'user' 
@@ -147,7 +162,7 @@ export default function AIAssistant() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
             <div className="flex gap-3 max-w-[80%]">
               <div className="w-8 h-8 shrink-0 rounded-full bg-purple-600 text-white flex items-center justify-center">
-                <Bot className="w-4 h-4" />
+                <Compass className="w-4 h-4" />
               </div>
               <div className="p-4 bg-white border border-slate-200 rounded-2xl rounded-tl-sm flex items-center gap-1.5 shadow-sm">
                 <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></span>
@@ -177,7 +192,7 @@ export default function AIAssistant() {
           </button>
         </form>
         <div className="text-center mt-3">
-          <p className="text-xs text-slate-400">AI can make mistakes. Verify important information with official examination guidelines.</p>
+          <p className="text-xs text-slate-400">Verify important information with official examination guidelines.</p>
         </div>
       </div>
     </div>

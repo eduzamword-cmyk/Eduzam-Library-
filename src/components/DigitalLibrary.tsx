@@ -7,7 +7,7 @@ import {
   FileCheck2, 
   GraduationCap, 
   FileText, 
-  Sparkles, 
+  Zap, 
   ExternalLink,
   BookMarked,
   Layers,
@@ -450,15 +450,15 @@ export default function DigitalLibrary({ onNavigate }: DigitalLibraryProps) {
         
         {/* Search Engine Area */}
         <div className="flex items-center gap-3 w-full">
-          {/* Powerful AI Search Button */}
+          {/* Lesson Plan Extractor Button */}
           <button
             onClick={() => {
               setActiveCategory('ai_extractor');
             }}
             className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-900/20 text-white transition-all transform active:scale-95 cursor-pointer ring-2 ring-emerald-500/50 hover:ring-emerald-400 group"
-            title="AI Data Extractor"
+            title="Lesson Plan Extractor"
           >
-            <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <Zap className="w-6 h-6 group-hover:scale-110 transition-transform" />
           </button>
 
           {/* Search Input */}
@@ -503,6 +503,16 @@ export default function DigitalLibrary({ onNavigate }: DigitalLibraryProps) {
               <List className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Upload Button */}
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-3 sm:px-4 py-3 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors shrink-0 shadow-sm h-14 cursor-pointer"
+            title="Upload Material or Book"
+          >
+            <PlusCircle className="w-5 h-5" />
+            <span className="hidden md:inline">Upload</span>
+          </button>
         </div>
 
         {/* Quick Search Suggestions */}
@@ -1380,7 +1390,7 @@ export default function DigitalLibrary({ onNavigate }: DigitalLibraryProps) {
                               : readerTheme === 'dark' ? 'bg-purple-950/30 border-purple-500/40 text-purple-200' : 'bg-purple-50 border-purple-200 text-purple-950'
                           }`}>
                             <div className="flex items-center gap-2 font-black text-xs uppercase tracking-wider mb-2">
-                              <Sparkles className="w-4 h-4 shrink-0" />
+                              <BookOpen className="w-4 h-4 shrink-0" />
                               <span>{page.calloutBox.title}</span>
                             </div>
                             <div className="text-xs sm:text-sm whitespace-pre-line leading-relaxed font-sans opacity-90">

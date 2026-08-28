@@ -32,7 +32,7 @@ import {
   Share2,
   Check
 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, auth } from '../lib/firebase';
 import { 
   collection, 
   query, 
@@ -41,6 +41,7 @@ import {
   serverTimestamp, 
   orderBy 
 } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface StaffPortalProps {
   onNavigate?: (view: string) => void;
@@ -163,28 +164,41 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
       handleFirestoreError(error, OperationType.LIST, 'notices');
     });
 
-    // Real-time listener for staff
-    const qStaff = query(collection(db, 'staff'));
-    const unsubscribeStaff = onSnapshot(qStaff, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStaffList(docs);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'staff');
-    });
+    let unsubscribeStaff = () => {};
+    let unsubscribeMarks = () => {};
 
-    // Real-time listener for marks
-    const qMarks = query(collection(db, 'marks'));
-    const unsubscribeMarks = onSnapshot(qMarks, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStudentMarks(docs);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'marks');
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Real-time listener for staff
+        const qStaff = query(collection(db, 'staff'));
+        unsubscribeStaff = onSnapshot(qStaff, (snapshot) => {
+          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStaffList(docs);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.LIST, 'staff');
+        });
+
+        // Real-time listener for marks
+        const qMarks = query(collection(db, 'marks'));
+        unsubscribeMarks = onSnapshot(qMarks, (snapshot) => {
+          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStudentMarks(docs);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.LIST, 'marks');
+        });
+      } else {
+        unsubscribeStaff();
+        unsubscribeMarks();
+        setStaffList([]);
+        setStudentMarks([]);
+      }
     });
 
     return () => {
       unsubscribeNotices();
       unsubscribeStaff();
       unsubscribeMarks();
+      unsubscribeAuth();
     };
   }, []);
 
@@ -219,23 +233,42 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
   ];
 
   return (
-    <div className="w-full space-y-6 pb-12">
+    <div className="w-full min-h-screen h-full space-y-6 pb-12 p-4 sm:p-6 lg:p-8 bg-slate-300/80 flex flex-col">
       {/* Four Small Square Windows Selection Interface + Compressed Live Communication Channel on Main Window */}
       {!activeTab ? (
-        <div className="space-y-8 py-4">
+        <div className="space-y-8 py-2">
+          {/* Top Bar for Main Windows Screen */}
+          <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto w-full">
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('dashboard')}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[8px] bg-white hover:bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+                title="Return to Main Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4 text-slate-700" />
+                <span>Back to Dashboard</span>
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800 bg-white/70 px-3 py-1.5 rounded-[8px] border border-slate-300/70 shadow-2xs">
+                Staffroom Command Windows
+              </span>
+            </div>
+          </div>
+
           {/* Three Enhanced Windows Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 w-full max-w-5xl mx-auto px-2 sm:px-0">
 
             {/* Window 2: Staff Registry */}
             <button
               onClick={() => setActiveTab('directory')}
-              className="group relative w-full rounded-3xl p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 bg-white border-2 border-slate-200/80 hover:border-emerald-400 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
+              className="group relative w-full rounded-[8px] p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 bg-white border border-amber-300/60 hover:border-emerald-600 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
             >
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold tracking-wide uppercase">
+              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold tracking-wide uppercase border border-emerald-300">
                 Verified TCZ
               </div>
 
-              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-3xl bg-gradient-to-br from-emerald-50 via-emerald-100/60 to-teal-100 group-hover:from-emerald-100 group-hover:to-teal-200 border-2 border-emerald-200/80 flex items-center justify-center transition-all shadow-md shadow-emerald-500/10 group-hover:scale-110">
+              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-[8px] bg-gradient-to-br from-emerald-50 via-emerald-100/60 to-teal-100 group-hover:from-emerald-100 group-hover:to-teal-200 border-2 border-emerald-400 flex items-center justify-center transition-all shadow-md shadow-emerald-500/10 group-hover:scale-110">
                 <GraduationCap className="w-10 h-10 sm:w-11 sm:h-11 text-emerald-600 group-hover:text-emerald-700 transition-colors drop-shadow-xs" />
               </div>
 
@@ -243,12 +276,12 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                 <span className="block text-base sm:text-lg font-black text-slate-900 group-hover:text-emerald-700 transition-colors">
                   Staff Registry
                 </span>
-                <span className="block text-xs font-bold text-slate-400">
+                <span className="block text-xs font-bold text-slate-500">
                   Teacher Accreditation
                 </span>
               </div>
 
-              <div className="w-full pt-3 border-t border-slate-100 flex items-center justify-center gap-1 text-xs font-extrabold text-emerald-600 group-hover:gap-2 transition-all">
+              <div className="w-full pt-3 border-t border-amber-300/60 flex items-center justify-center gap-1 text-xs font-extrabold text-emerald-600 group-hover:gap-2 transition-all">
                 <span>View Directory</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
@@ -257,13 +290,13 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
             {/* Window 3: Official Markbook */}
             <button
               onClick={() => onNavigate ? onNavigate('markbook') : setActiveTab('markbook')}
-              className="group relative w-full rounded-3xl p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 bg-white border-2 border-slate-200/80 hover:border-blue-400 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
+              className="group relative w-full rounded-[8px] p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 bg-white border border-amber-300/60 hover:border-blue-600 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
             >
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold tracking-wide uppercase">
+              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold tracking-wide uppercase border border-blue-300">
                 ECZ Standards
               </div>
 
-              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-3xl bg-gradient-to-br from-blue-50 via-blue-100/60 to-indigo-100 group-hover:from-blue-100 group-hover:to-indigo-200 border-2 border-blue-200/80 flex items-center justify-center transition-all shadow-md shadow-blue-500/10 group-hover:scale-110">
+              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-[8px] bg-gradient-to-br from-blue-50 via-blue-100/60 to-indigo-100 group-hover:from-blue-100 group-hover:to-indigo-200 border-2 border-blue-400/80 flex items-center justify-center transition-all shadow-md shadow-blue-500/10 group-hover:scale-110">
                 <BookOpen className="w-10 h-10 sm:w-11 sm:h-11 text-blue-600 group-hover:text-blue-700 transition-colors drop-shadow-xs" />
               </div>
 
@@ -271,32 +304,32 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                 <span className="block text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-700 transition-colors">
                   Official Markbook
                 </span>
-                <span className="block text-xs font-bold text-slate-400">
+                <span className="block text-xs font-bold text-slate-500">
                   CA & Exam Records
                 </span>
               </div>
 
-              <div className="w-full pt-3 border-t border-slate-100 flex items-center justify-center gap-1 text-xs font-extrabold text-blue-600 group-hover:gap-2 transition-all">
+              <div className="w-full pt-3 border-t border-amber-300/60 flex items-center justify-center gap-1 text-xs font-extrabold text-blue-600 group-hover:gap-2 transition-all">
                 <span>Open Markbook</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
             </button>
 
-            {/* Window 4: Communication Center */}
+            {/* Window 4: Communication Center (Black Window) */}
             <button
               onClick={() => onNavigate ? onNavigate('communication') : setActiveTab('communication')}
-              className="group relative w-full rounded-3xl p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-teal-500/10 bg-white border-2 border-slate-200/80 hover:border-teal-400 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
+              className="group relative w-full rounded-[8px] p-6 sm:p-7 flex flex-col items-center justify-between gap-5 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-slate-900/30 bg-slate-950 text-white border border-amber-300/60 hover:border-teal-500 hover:-translate-y-1.5 cursor-pointer text-center overflow-hidden"
             >
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[10px] font-extrabold tracking-wide uppercase flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-ping" /> Live Hub
+              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-extrabold tracking-wide uppercase flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" /> Live Hub
               </div>
 
-              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-3xl bg-gradient-to-br from-teal-50 via-teal-100/60 to-emerald-100 group-hover:from-teal-100 group-hover:to-emerald-200 border-2 border-teal-200/80 flex items-center justify-center transition-all shadow-md shadow-teal-500/10 group-hover:scale-110">
-                <MessageSquare className="w-10 h-10 sm:w-11 sm:h-11 text-teal-600 group-hover:text-teal-700 transition-colors drop-shadow-xs" />
+              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-[8px] bg-slate-900 group-hover:bg-slate-850 border-2 border-slate-600 flex items-center justify-center transition-all shadow-md shadow-black/40 group-hover:scale-110">
+                <MessageSquare className="w-10 h-10 sm:w-11 sm:h-11 text-teal-400 group-hover:text-teal-300 transition-colors drop-shadow-xs" />
               </div>
 
               <div className="space-y-1 w-full">
-                <span className="block text-base sm:text-lg font-black text-slate-900 group-hover:text-teal-700 transition-colors">
+                <span className="block text-base sm:text-lg font-black text-white group-hover:text-teal-300 transition-colors">
                   Communication
                 </span>
                 <span className="block text-xs font-bold text-slate-400">
@@ -304,7 +337,7 @@ export default function StaffPortal({ onNavigate }: StaffPortalProps) {
                 </span>
               </div>
 
-              <div className="w-full pt-3 border-t border-slate-100 flex items-center justify-center gap-1 text-xs font-extrabold text-teal-600 group-hover:gap-2 transition-all">
+              <div className="w-full pt-3 border-t border-amber-300/40 flex items-center justify-center gap-1 text-xs font-extrabold text-teal-400 group-hover:gap-2 transition-all">
                 <span>Enter Live Hub</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
